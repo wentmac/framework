@@ -1,5 +1,38 @@
 {
+    "name": "TmacPHP/framework",
+    "description": "The Tmac PHP Framework.",
+    "keywords": [
+        "framework",
+        "TmacPHP"
+    ],
+    "homepage": "http://www.t-mac.org/",
+    "license": "Apache-2.0",
+    "authors": [
+        {
+            "name": "wentmac",
+            "email": "wentmac@vip.qq.com"
+        }
+    ],
     "require": {
-        "phpoffice/phpexcel": "^1.8"
+        "php": ">=5.1.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^7.0"
+    },
+    "autoload": {
+        "files": [],
+        "psr-4": {
+            "Tmac\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Tmac\\tests\\": "tests/"
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true,
+    "config": {
+        "sort-packages": true
     }
 }
