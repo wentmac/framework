@@ -4,7 +4,7 @@
  * Power By Tmac PHP MVC framework
  * $Author: zhangwentao $  <zwttmac@qq.com>
  * $Id: TmacPHP.php 439 2016-10-04 09:47:05Z zhangwentao $
- * http://www.t-mac.org； 
+ * http://www.t-mac.org；
  */
 //加载配置文件
 require(TMAC_BASE_PATH . 'Tmac.config.php');
