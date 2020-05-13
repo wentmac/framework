@@ -1,0 +1,8 @@
+# Created by .ignore support plugin (hsz.mobi)
+/vendor
+composer.phar
+composer.lock
+.DS_Store
+Thumbs.db
+/.idea
+/.vscode
