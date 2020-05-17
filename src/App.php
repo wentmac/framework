@@ -6,9 +6,29 @@
  * $Id: Tmac.class.php 325 2016-05-31 10:07:35Z zhangwentao $
  * http://www.t-mac.org；
  */
+
 namespace Tmac;
-class App
+class App extends Container
 {
+
+    protected $begin_time;
+
+    /**
+     * 应用根目录
+     * @var
+     */
+    protected $root_path = '';
+    /**
+     * 框架目录
+     * @var string
+     */
+    protected $tmac_path = '';
+
+    /**
+     * 应用业务代码目录
+     * @var string
+     */
+    protected $app_path = '';
 
     /**
      * Model的instance数组
@@ -20,9 +40,21 @@ class App
     public static $container;
 
     /**
+     * App constructor.
+     * @param string|string $root_path
+     */
+    public function __construct( string $root_path = '' )
+    {
+        $this->tmac_path = dirname( __DIR__ ) . DIRECTORY_SEPARATOR;
+        $this->root_path = empty( $root_path ) ? rtrim( $rootPath, DIRECTORY_SEPARATOR ) . DIRECTORY_SEPARATOR : $this->getDefaultRootPath();
+        $this->app_path = $this->root_path . 'src' . DIRECTORY_SEPARATOR;
+
+    }
+
+    /**
      * core
      */
-    public function __construct()
+    public function init()
     {
         global $TmacConfig;
         //设置编码
@@ -261,7 +293,7 @@ class App
             $group_value = isset ( self::$config[ $group ][ $group_key ] ) ? self::$config[ $group ][ $group_key ] : '';
         } else {
             $group_value = self::$config[ $group ];
-            foreach ( $group_array AS $value ) {
+            foreach ( $group_array as $value ) {
                 if ( isset ( $group_value[ $value ] ) ) {
                     $group_value = $group_value[ $value ];
                 }
@@ -359,4 +391,17 @@ class App
         }
 
     }
+
+    /**
+     * 获取应用根目录
+     * @access protected
+     * @return string
+     */
+    protected function getDefaultRootPath(): string
+    {
+        $path = dirname( dirname( dirname( dirname( $this->tmac_path ) ) ) );
+
+        return $path . DIRECTORY_SEPARATOR;
+    }
+
 }
