@@ -10,6 +10,7 @@ namespace Tmac;
 
 use ArrayAccess;
 use Psr\Container\ContainerInterface;
+use Tmac\Exception\ClassNotFoundException;
 
 class Container implements ArrayAccess, ContainerInterface
 {
@@ -31,6 +32,10 @@ class Container implements ArrayAccess, ContainerInterface
      * @var array
      */
     private $_bind = [];
+
+
+    private $_definitions = [];
+
 
 
     /**
