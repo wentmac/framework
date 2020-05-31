@@ -8,6 +8,9 @@
 
 namespace Tmac;
 
+use Closure;
+use Exception;
+use ReflectionClass;
 use ArrayAccess;
 use Psr\Container\ContainerInterface;
 use Tmac\Exception\ClassNotFoundException;
@@ -22,21 +25,16 @@ class Container implements ArrayAccess, ContainerInterface
     protected static $instance;
 
     /**
+     * 容器绑定标识
+     * @var array
+     */
+    protected $_bind = [];
+
+    /**
      * 容器中对对象实例
      * @var array
      */
     private $_instances = [];
-
-    /**
-     * 容器绑定array
-     * @var array
-     */
-    private $_bind = [];
-
-
-    private $_definitions = [];
-
-
 
     /**
      * Get the globally available instance of the container.
@@ -53,14 +51,47 @@ class Container implements ArrayAccess, ContainerInterface
     }
 
     /**
-     * 设置容器实例
-     * @param ContainerContract|null $container
-     * @return ContainerContract|null
+     * 绑定一个类、闭包、实例、接口实现到容器
+     * @access public
+     * @param string|array $abstract 类标识、接口
+     * @param mixed        $concrete 要绑定的类、闭包或者实例
+     * @return $this
      */
-    public static function setInstance( ContainerContract $container = null )
+    public function bind($abstract, $concrete = null)
     {
-        return static::$instance = $container;
+        if (is_array($abstract)) {
+            foreach ($abstract as $key => $val) {
+                $this->bind($key, $val);
+            }
+        } elseif ($concrete instanceof Closure) {
+            $this->bind[$abstract] = $concrete;
+        } elseif (is_object($concrete)) {
+            $this->instance($abstract, $concrete);
+        } else {
+            $abstract = $this->getAlias($abstract);
+
+            $this->bind[$abstract] = $concrete;
+        }
+
+        return $this;
     }
+
+    /**
+     * 绑定一个类、闭包、实例、接口实现到容器
+     * @access public
+     * @param string|array $abstract 类标识、接口
+     * @param mixed $concrete 要绑定的类、闭包或者实例
+     * @return $this
+     */
+    public function set( $class, $concrete = null )
+    {
+        if ($concrete === null) {
+            $concrete = $class;
+        }
+        $this->_instances[$class] = $concrete;
+        return $this;
+    }
+
 
     /**
      * 获取容器中的对象实例
@@ -78,76 +109,100 @@ class Container implements ArrayAccess, ContainerInterface
     }
 
     /**
-     * Register a binding with the container.
-     * 绑定类，闭包，实例，接口 到容器
-     * @param $abstract
-     * @param null $concrete
-     * @return $this
-     */
-    public function bind( $abstract, $concrete = null )
-    {
-
-        if ( is_array( $abstract ) ) {
-            foreach ( $abstract as $key => $val ) {
-                $this->bind( $key, $val );
-            }
-        } elseif ( $concrete instanceof Closure ) {
-            $this->bind[ $abstract ] = $concrete;
-        } elseif ( is_object( $concrete ) ) {
-            $this->instance( $abstract, $concrete );
-        } else {
-            $abstract = $this->getAlias( $abstract );
-
-            $this->bind[ $abstract ] = $concrete;
-        }
-
-        return $this;
-    }
-
-    /**
-     * 根据别名获取真实类名
-     * @param string $abstract
-     * @return string
-     */
-    public function getAlias( string $abstract ): string
-    {
-        if ( isset( $this->bind[ $abstract ] ) ) {
-            $bind = $this->bind[ $abstract ];
-
-            if ( is_string( $bind ) ) {
-                return $this->getAlias( $bind );
-            }
-        }
-
-        return $abstract;
-    }
-
-    /**
-     * 绑定一个类实例到容器
+     * 创建类的实例 已经存在则直接获取
      * @access public
      * @param string $abstract 类名或者标识
-     * @param object $instance 类的实例
-     * @return $this
+     * @param array $vars 变量
+     * @param bool $newInstance 是否每次创建新的实例
+     * @return mixed
      */
-    public function instance( string $abstract, $instance )
+    public function make( string $abstract, array $vars = [], bool $newInstance = false )
     {
-        $abstract = $this->getAlias( $abstract );
+        if ( isset( $this->_instances[ $abstract ] ) && !$newInstance ) {
+            return $this->_instances[ $abstract ];
+        }
 
-        $this->instances[ $abstract ] = $instance;
+        $object = $this->resolve( $abstract, $vars );
 
-        return $this;
+        if ( !$newInstance ) {
+            $this->_instances[ $abstract ] = $object;
+        }
+
+        return $object;
     }
 
     /**
-     * 判断容器中是否存在类及标识
-     * Determine if the given abstract type has been bound.
-     * @access public
-     * @param string $abstract 类名或者标识
-     * @return bool
+     * 解决依赖
+     * @param $class
+     * @param $param
+     * @return mixed|object
+     * @throws \ReflectionException
      */
-    public function bound( string $abstract ): bool
+    private function resolve( $class, $param )
     {
-        return isset( $this->bind[ $abstract ] ) || isset( $this->instances[ $abstract ] );
+        if ( $class instanceof Closure ) {
+            // 使用匿名函数去设置服务，这个实例将被延迟加载
+            return $class( $this, $param );
+        }
+        $reflector = new ReflectionClass( $class );
+        // 检查类是否可以实例化
+        if ( !$reflector->isInstantiable() ) {
+            throw new Exception( "Class {$class} is not instantiable" );
+        }
+        // 通过反射获取到目标类的构造函数
+        $constructor = $reflector->getConstructor();
+        if ( is_null( $constructor ) ) {
+            // 如果目标没有构造函数则直接返回实例化对象
+            return $reflector->newInstance();
+        }
+
+        // 获取构造函数参数
+        $parameters = $constructor->getParameters();
+        //获取到构造函数中的依赖
+        $dependencies = $this->getDependencies( $parameters );
+        // 解决掉所有依赖问题并返回实例
+        return $reflector->newInstanceArgs( $dependencies );
+    }
+
+    /**
+     * 解决依赖关系
+     *
+     * @param $parameters
+     *
+     * @return array
+     * @throws Exception
+     */
+    private function getDependencies( $parameters )
+    {
+        $dependencies = [];
+        foreach ( $parameters as $parameter ) {
+            $dependency = $parameter->getClass();
+            if ( $dependency === null ) {
+                // 检查是否有默认值
+                $dependencies[] = $this->resolveNonClass( $parameter );
+            } else {
+                // 重新调用get() 方法获取需要依赖的类到容器中。
+                $dependencies[] = $this->get( $dependency->name );
+            }
+        }
+
+        return $dependencies;
+    }
+
+    /**
+     * @param \ReflectionParameter $parameter
+     * @return mixed
+     * @throws Exception
+     */
+    private function resolveNonClass( $parameter )
+    {
+        // 有默认值则返回默认值
+        if ( $parameter->isDefaultValueAvailable() ) {
+            // 获取参数默认值
+            return $parameter->getDefaultValue();
+        }
+
+        throw new Exception( "无法解析依赖关系 {$parameter->name}" );
     }
 
     /**
@@ -159,7 +214,7 @@ class Container implements ArrayAccess, ContainerInterface
      */
     public function has( $name ): bool
     {
-        return $this->bound( $name );
+        return isset( $this->bind[ $name ] ) || isset( $this->instances[ $name ] );
     }
 
     /**
@@ -175,147 +230,60 @@ class Container implements ArrayAccess, ContainerInterface
         return isset( $this->instances[ $abstract ] );
     }
 
-
-    /**
-     * 创建类的实例 已经存在则直接获取
-     * Resolve the given type from the container.
-     * @access public
-     * @param string $abstract    类名或者标识
-     * @param array  $vars        变量
-     * @param bool   $newInstance 是否每次创建新的实例
-     * @return mixed
-     */
-    public function make(string $abstract, array $vars = [], bool $newInstance = false)
-    {
-        $abstract = $this->getAlias($abstract);
-
-        if (isset($this->instances[$abstract]) && !$newInstance) {
-            return $this->instances[$abstract];
-        }
-
-        if (isset($this->bind[$abstract]) && $this->bind[$abstract] instanceof Closure) {
-            // 如果是匿名函数（Anonymous functions），也叫闭包函数（closures）
-            // 执行闭包函数，并将结果输出
-            $object = $this->invokeFunction($this->bind[$abstract], $vars);
-        } else {
-            $object = $this->invokeClass($abstract, $vars);
-        }
-
-        if (!$newInstance) {
-            $this->instances[$abstract] = $object;
-        }
-
-        return $object;
-    }
-
     /**
      * 删除容器中的对象实例
      * @access public
      * @param string $name 类名或者标识
      * @return void
      */
-    public function delete($name)
+    public function delete( $name )
     {
-        $name = $this->getAlias($name);
+        $name = $this->getAlias( $name );
 
-        if (isset($this->instances[$name])) {
-            unset($this->instances[$name]);
+        if ( isset( $this->instances[ $name ] ) ) {
+            unset( $this->instances[ $name ] );
         }
     }
 
-    /**
-     * 执行函数或者闭包方法 支持参数调用
-     * @access public
-     * @param string|Closure $function 函数或者闭包
-     * @param array          $vars     参数
-     * @return mixed
-     */
-    public function invokeFunction($function, array $vars = [])
+
+    public function __set( $name, $value )
     {
-        try {
-            $reflect = new ReflectionFunction($function);
-        } catch (ReflectionException $e) {
-            throw new FuncNotFoundException("function not exists: {$function}()", $function, $e);
-        }
-
-        $args = $this->bindParams($reflect, $vars);
-
-        return $function(...$args);
+        $this->set( $name, $value );
     }
 
-    /**
-     * 调用反射执行类的实例化 支持依赖注入
-     * @access public
-     * @param string $class 类名
-     * @param array  $vars  参数
-     * @return mixed
-     */
-    public function invokeClass(string $class, array $vars = [])
+    public function __get( $name )
     {
-        try {
-            $reflect = new ReflectionClass($class);
-        } catch (ReflectionException $e) {
-            throw new ClassNotFoundException('class not exists: ' . $class, $class, $e);
-        }
-
-        if ($reflect->hasMethod('__make')) {
-            $method = $reflect->getMethod('__make');
-            if ($method->isPublic() && $method->isStatic()) {
-                $args = $this->bindParams($method, $vars);
-                return $method->invokeArgs(null, $args);
-            }
-        }
-
-        $constructor = $reflect->getConstructor();
-
-        $args = $constructor ? $this->bindParams($constructor, $vars) : [];
-
-        $object = $reflect->newInstanceArgs($args);
-
-        $this->invokeAfter($class, $object);
-
-        return $object;
+        return $this->get( $name );
     }
 
-
-    public function __set($name, $value)
+    public function __isset( $name ): bool
     {
-        $this->bind($name, $value);
+        return $this->exists( $name );
     }
 
-    public function __get($name)
+    public function __unset( $name )
     {
-        return $this->get($name);
+        $this->delete( $name );
     }
 
-    public function __isset($name): bool
+    public function offsetExists( $key )
     {
-        return $this->exists($name);
+        return $this->exists( $key );
     }
 
-    public function __unset($name)
+    public function offsetGet( $key )
     {
-        $this->delete($name);
+        return $this->make( $key );
     }
 
-    public function offsetExists($key)
+    public function offsetSet( $key, $value )
     {
-        return $this->exists($key);
+        $this->bind( $key, $value );
     }
 
-    public function offsetGet($key)
+    public function offsetUnset( $key )
     {
-        return $this->make($key);
-    }
-
-    public function offsetSet($key, $value)
-    {
-        $this->bind($key, $value);
-    }
-
-    public function offsetUnset($key)
-    {
-        $this->delete($key);
+        $this->delete( $key );
     }
 
     /**
