@@ -2,7 +2,7 @@
 /**
  * Power By Tmac PHP MVC framework
  * $Author: zhangwentao $  <zwttmac@qq.com>
- * $Id: Controller.class.php 325 2016-05-31 10:07:35Z zhangwentao $
+ * $Id: Container.php 325 2016-05-31 10:07:35Z zhangwentao $
  * http://www.t-mac.org；
  */
 
@@ -250,8 +250,8 @@ class Container implements ArrayAccess, ContainerInterface
      */
     private function autoInjectingDI( ReflectionClass $reflect, object $object )
     {
-        if ( $reflect->hasMethod( 'setDi' ) ) {
-            $object->setDi( $this );
+        if ( $reflect->hasMethod( 'setDI' ) ) {
+            $object->setDI( $this );
         }
     }
 
@@ -413,12 +413,28 @@ class Container implements ArrayAccess, ContainerInterface
      * @param $name
      * @param $arguments
      */
-    public function __call( $name, $arguments )
+    public function __call( $name, $arguments = null )
     {
+        //get开头表示获取
         if ( strpos( $name, 'get' ) !== false ) {
-            $service = lcfirst( substr( $name, 3 ) );
-            // if(isset($this->_instances[]));
+            $possible_service = lcfirst( substr( $name, 3 ) );
+            //如果set 绑定过服务 可以返回
+            if ( isset( $this->_bind[ $possible_service ] ) ) {
+                if ( count( $arguments ) ) {
+                    $object = $this->get( $possible_service, $arguments );
+                } else {
+                    $object = $this->get( $possible_service );
+                }
+                return $object;
+            }
         }
+        //set注入
+        if ( strpos( $name, 'set' ) !== false && !empty( $arguments[ 0 ] ) ) {
+            $possible_service = lcfirst( substr( $name, 3 ) );
+            $this->set( $possible_service, $arguments[ 0 ] );
+            return null;
+        }
+
         // 注意: $name 的值区分大小写
         $error = "Calling object method '$name' "
             . implode( ', ', $arguments ) . "\n";
@@ -442,7 +458,6 @@ class Container implements ArrayAccess, ContainerInterface
 
     public function __unset( $name )
     {
-        return true;
         $this->delete( $name );
     }
 
@@ -465,6 +480,4 @@ class Container implements ArrayAccess, ContainerInterface
     {
         $this->delete( $key );
     }
-
-
 }
