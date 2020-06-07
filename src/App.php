@@ -8,8 +8,11 @@
  */
 
 namespace Tmac;
-class App extends Container
+
+class App
 {
+
+    use DITrait;
 
     protected $begin_time;
 
@@ -30,6 +33,9 @@ class App extends Container
      */
     protected $app_path = '';
 
+    protected $web_root_path = '';
+    protected $config_path = '';
+
     /**
      * Model的instance数组
      * @var array
@@ -37,33 +43,54 @@ class App extends Container
     protected static $model = array();
     protected static $plugin = array();
     protected static $config = array();
-    public static $container;
+
 
     /**
      * App constructor.
      * @param string|string $root_path
      */
-    public function __construct( string $root_path = '' )
+    public function __construct( string $root_path = '', string $web_root = '' )
     {
-        $this->tmac_path = dirname( __DIR__ ) . DIRECTORY_SEPARATOR;
-        $this->root_path = empty( $root_path ) ? rtrim( $rootPath, DIRECTORY_SEPARATOR ) . DIRECTORY_SEPARATOR : $this->getDefaultRootPath();
+        $this->tmac_path = dirname( __DIR__ ) . DIRECTORY_SEPARATOR . 'src' . DIRECTORY_SEPARATOR;
+        $this->root_path = empty( $root_path ) ? $this->getDefaultRootPath() : rtrim( $root_path, DIRECTORY_SEPARATOR ) . DIRECTORY_SEPARATOR;
         $this->app_path = $this->root_path . 'src' . DIRECTORY_SEPARATOR;
+        $this->web_root_path = $web_root . 'src' . DIRECTORY_SEPARATOR;
 
+        $this->config_path = $this->root_path . 'config' . DIRECTORY_SEPARATOR;
     }
 
     /**
-     * core
+     * 加载应用文件和配置
      */
-    public function init()
+    protected function load(): void
     {
-        global $TmacConfig;
+        if ( is_file( $this->config_path . 'provider.php' ) ) {
+            $this->container->setShared( include $this->config_path . 'provider.php' );
+        }
+    }
+
+    /**
+     * 项目启动
+     */
+    public function run()
+    {
+        $this->load();
+        $this->initialize();
+        $this->container->controller->init();
+    }
+
+    /**
+     * 应用初始化
+     */
+    protected function initialize()
+    {
         //设置编码
-        header( "Content-type: text/html;charset={$TmacConfig[ 'Common' ][ 'charset' ]}" );
+        header( "Content-type: text/html;charset={$this->container->config['app.charset']}" );
         //设置时区
-        @date_default_timezone_set( $TmacConfig[ 'Common' ][ 'timezone' ] );
+        @date_default_timezone_set( $this->container->config[ 'app.default_timezone' ] );
         //生成htaccess文件
-        $htaccess = WEB_ROOT . '.htaccess';
-        if ( $TmacConfig[ 'Common' ][ 'urlrewrite' ] ) {
+        $htaccess = $this->web_root_path . '.htaccess';
+        if ( $this->container->config[ 'app.url_rewrite' ] ) {
             if ( is_file( $htaccess ) ) {
                 if ( filesize( $htaccess ) > 132 ) {
                     //如果程序无法删除就需要手动删除
@@ -75,22 +102,19 @@ class App extends Container
         //不进行魔术过滤 php5.3废除了 set_magic_quotes_runtime(0);
         ini_set( "magic_quotes_runtime", 0 );
         //开启页面压缩
-        if ( $TmacConfig[ 'Common' ][ 'gzip' ] ) {
+        if ( $this->container->config[ 'app.gzip' ] ) {
             function_exists( 'ob_gzhandler' ) ? ob_start( 'ob_gzhandler' ) : ob_start();
         } else {
             ob_start();
         }
         //页面报错
-        $TmacConfig[ 'Common' ][ 'errorreport' ] ? error_reporting( E_ALL ) : error_reporting( 0 );
+        $this->container->config[ 'app.error_report' ] ? error_reporting( E_ALL ) : error_reporting( 0 );
         //控制异常
         set_exception_handler( array( $this, 'exception' ) );
         //是否自动开启Session 您可以在控制器中初始化，也可以在系统中自动加载
-        if ( $GLOBALS[ 'TmacConfig' ][ 'Session' ][ 'start' ] ) {
-            self::session();
+        if ( $this->container->config[ 'app.session.start' ] ) {
+            $this->container->session->init();
         }
-        self::$container = new Container();
-        //Router
-        new Controller();
     }
 
     /**
@@ -246,96 +270,6 @@ class App extends Container
     }
 
     /**
-     * 寻找model模型文件的路径
-     * @param type $file
-     * @param type $app_name
-     * @param type $ext
-     * @return string
-     */
-    public final static function findModel( $file, $app_name = APP_NAME, $ext = '.class.php' )
-    {
-        $filePath = APPS_PATH . $app_name . DIRECTORY_SEPARATOR . APPLICATION . DIRECTORY_SEPARATOR . 'Model' . DIRECTORY_SEPARATOR . $file . $ext;
-        if ( is_file( $filePath ) ) {
-            return $filePath;
-        } else {
-            throw new TmacException ( '在' . APP_NAME . '的模型Model中没有找到文件:' . $filePath );
-        }
-    }
-
-    /**
-     * 载入Config
-     * @param string $model Model名 类名必须与文件名一致 "."作为目录分隔符
-     * @param string $app_name 项目名
-     * @param string $ext 后缀名
-     * @return object
-     * @access public
-     * @static
-     */
-    public final static function config( $model, $app_name = APP_NAME, $ext = '.php' )
-    {
-        // Extract the main group from the key
-        $group_array = explode( '.', $model );
-        $group = $group_array[ 0 ];
-        array_shift( $group_array );
-        if ( !isset ( self::$config[ $group ] ) ) {
-            //存在
-            $file = APPS_PATH . $app_name . DIRECTORY_SEPARATOR . APPLICATION . DIRECTORY_SEPARATOR . 'Config' . DIRECTORY_SEPARATOR . $group . $ext;
-            if ( is_file( $file ) ) {
-                include( $file );
-                self::$config[ $group ] = $config;
-                unset ( $config );
-            } else {
-                throw new TmacException ( '找不到Config文件:' . $file );
-            }
-        }
-        if ( count( $group_array ) == 1 ) {
-            $group_key = $group_array[ 0 ];
-            $group_value = isset ( self::$config[ $group ][ $group_key ] ) ? self::$config[ $group ][ $group_key ] : '';
-        } else {
-            $group_value = self::$config[ $group ];
-            foreach ( $group_array as $value ) {
-                if ( isset ( $group_value[ $value ] ) ) {
-                    $group_value = $group_value[ $value ];
-                }
-            }
-        }
-        if ( !isset ( $group_value ) ) {
-            //self::log('error', 'Missing i18n entry ' . $key . ' for language ' . $locale);
-            throw new TmacException ( 'Config文件:' . $group . '里面的配置文件值不能为空!' );
-        }
-        return $group_value;
-    }
-
-    /**
-     * 开启session
-     */
-    public final static function session()
-    {
-        ini_set( 'session.auto_start', 0 ); //指定会话模块是否在请求开始时自动启动一个会话。默认为 0（不启动）。
-        if ( !empty ( $GLOBALS[ 'TmacConfig' ][ 'Session' ][ 'name' ] ) )
-            session_name( $GLOBALS[ 'TmacConfig' ][ 'Session' ][ 'name' ] ); //默认为 PHPSESSID
-        if ( !empty ( $GLOBALS[ 'TmacConfig' ][ 'Session' ][ 'path' ] ) )
-            session_save_path( $GLOBALS[ 'TmacConfig' ][ 'Session' ][ 'path' ] ); //如果选择了默认的 files 文件处理器，则此值是创建文件的路径。默认为 /tmp。
-        if ( !empty ( $GLOBALS[ 'TmacConfig' ][ 'Session' ][ 'expire' ] ) )
-            ini_set( 'session.gc_maxlifetime', $GLOBALS[ 'TmacConfig' ][ 'Session' ][ 'expire' ] );
-        if ( $GLOBALS[ 'TmacConfig' ][ 'Session' ][ 'type' ] == 'DB' ) {
-            ini_set( 'session.save_handler', 'user' );  //默认值是 files
-            $hander = new SessionDb(); //开始session存放mysql里的相关操作
-            $hander->execute();
-        } else if ( $GLOBALS[ 'TmacConfig' ][ 'Session' ][ 'type' ] == 'memcache' ) {
-            ini_set( "session.save_handler", "memcache" );
-            ini_set( "session.save_path", "tcp://{$GLOBALS[ 'TmacConfig' ][ 'Cache' ][ 'Memcached' ][ 'host' ]}:{$GLOBALS[ 'TmacConfig' ][ 'Cache' ][ 'Memcached' ][ 'port' ]}" );
-        } else if ( $GLOBALS[ 'TmacConfig' ][ 'Session' ][ 'type' ] == 'memcached' ) {
-            ini_set( "session.save_handler", "memcached" ); // 是memcached不是memcache
-            ini_set( "session.save_path", "{$GLOBALS[ 'TmacConfig' ][ 'Cache' ][ 'Memcached' ][ 'host' ]}:{$GLOBALS[ 'TmacConfig' ][ 'Cache' ][ 'Memcached' ][ 'port' ]}" ); // 不要tcp:[/b]
-        } else if ( $GLOBALS[ 'TmacConfig' ][ 'Session' ][ 'type' ] == 'redis' ) {
-            ini_set( "session.save_handler", "redis" ); // 是memcached不是memcache
-            ini_set( "session.save_path", "tcp://{$GLOBALS[ 'TmacConfig' ][ 'Cache' ][ 'Redis' ]['default'][ 'host' ]}:{$GLOBALS[ 'TmacConfig' ][ 'Cache' ][ 'Redis' ]['default'][ 'port' ]}?auth={$GLOBALS[ 'TmacConfig' ][ 'Cache' ][ 'Redis' ]['default'][ 'password' ]}" );
-        }
-        session_start();
-    }
-
-    /**
      * 获取File缓存实例
      * 使用方法 $cat_list = Tmac::getCache('cat_list', array($this->category_model, 'getCategoryList'), array(0), 86400);
      * @param type $variable
@@ -399,8 +333,8 @@ class App extends Container
      */
     protected function getDefaultRootPath(): string
     {
-        $path = dirname( dirname( dirname( dirname( $this->tmac_path ) ) ) );
-
+        //$path = dirname( dirname( dirname( dirname( $this->tmac_path ) ) ) );
+        $path = substr( dirname( $this->tmac_path ), 0, -25 ); //上级目录
         return $path . DIRECTORY_SEPARATOR;
     }
 

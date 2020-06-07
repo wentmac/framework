@@ -2,7 +2,7 @@
 /**
  * Power By Tmac PHP MVC framework
  * $Author: zhangwentao $  <zwttmac@qq.com>
- * $Id: Container.php 325 2016-05-31 10:07:35Z zhangwentao $
+ * $Id: Controller.class.php 325 2016-05-31 10:07:35Z zhangwentao $
  * http://www.t-mac.org；
  */
 
@@ -61,7 +61,6 @@ class Container implements ArrayAccess, ContainerInterface
         return static::$instance;
     }
 
-
     /**
      * 绑定一个类实例到容器
      * @access public
@@ -69,10 +68,27 @@ class Container implements ArrayAccess, ContainerInterface
      * @param object $instance 类的实例
      * @return $this
      */
-    private function instance( string $abstract, $instance )
+    private function setInstance( string $abstract, $instance )
     {
         $this->_instances[ $abstract ] = $instance;
         return $this;
+    }
+
+    /**
+     * 根据别名获取真实类名
+     * @param string $abstract
+     * @return string
+     */
+    private function getAlias( string $abstract ): string
+    {
+        if ( isset( $this->_bind[ $abstract ] ) && $abstract !== $this->_bind[ $abstract ] ) {
+            $bind = $this->_bind[ $abstract ];
+
+            if ( is_string( $bind ) ) {
+                return $this->getAlias( $bind );
+            }
+        }
+        return $abstract;
     }
 
     /**
@@ -82,19 +98,55 @@ class Container implements ArrayAccess, ContainerInterface
      * @param mixed $concrete 要绑定的类、闭包或者实例
      * @return $this
      */
-    private function bind( $abstract, $concrete = null )
+    private function bind( string $abstract, $concrete = null )
     {
+        /**
+         *  直接注册一个实例
+         * $di->set("request", new Request());
+         * $di["request"] = new Request();
+         * //直接传入实例化的对象
+         * $di->set('a3',new A("小唐"));
+         * $a3 = $di['a3'];//可以直接通过数组方式获取服务对象
+         * echo $a3->name."<br/>";//小唐
+         * 对于直接注册已经实例化的对象，如上代码中的a3服务，set和setShared效果是一样的。
+         */
+        if ( is_object( $concrete ) ) {
+            $this->setInstance( $abstract, $concrete );
+            return $this;
+        }
         //如果没有绑定类，默认把标识名当类
         if ( $concrete === null ) {
             $concrete = $abstract;
         }
-        if ( is_array( $abstract ) ) {
-            foreach ( $abstract as $key => $val ) {
-                $this->bind( $key, $val );
+        /**
+         * 支持set时 设置初始化配置 构造函数
+         * // 通过配置注册一个类
+         * // 通过 get() 初始化时，配置将会被使用。
+         * $container->set('yii\db\Connection', [
+         * 'dsn' => 'mysql:host=127.0.0.1;dbname=demo',
+         * 'username' => 'root',
+         * 'password' => '',
+         * 'charset' => 'utf8',
+         * ]);
+         *
+         * // 通过类的配置注册一个别名
+         * // 这种情况下，需要通过一个 “class” 元素指定这个类
+         * $container->set('db', [
+         * 'class' => 'yii\db\Connection',
+         * 'dsn' => 'mysql:host=127.0.0.1;dbname=demo',
+         * 'username' => 'root',
+         * 'password' => '',
+         * 'charset' => 'utf8',
+         * ]);
+         */
+        if ( is_array( $concrete ) && !isset( $concrete[ 'class' ] ) ) {
+            if ( strpos( $class, '\\' ) !== false ) {
+                $concrete[ 'class' ] = $abstract;
+            } else {
+                throw new ClassNotFoundException( 'Container Set Error:A class definition requires a "class" member.' . $abstract . var_export( $concrete ) );
             }
-        } else {
-            $this->_bind[ $abstract ] = $concrete;
         }
+        $this->_bind[ $abstract ] = $concrete;
         return $this;
     }
 
@@ -122,9 +174,15 @@ class Container implements ArrayAccess, ContainerInterface
      */
     public function set( $abstract, $concrete = null )
     {
-        //设置 注册的类 为非共享服务，每次调用初始化
-        $this->_bind_shared[ $abstract ] = false;
-        return $this->bind( $abstract, $concrete );
+        if ( is_array( $abstract ) ) {
+            foreach ( $abstract as $key => $val ) {
+                $this->set( $key, $val );
+            }
+        } else {
+            //设置 注册的类 为非共享服务，每次调用初始化
+            $this->_bind_shared[ $abstract ] = false;
+            return $this->bind( $abstract, $concrete );
+        }
     }
 
     /**
@@ -146,9 +204,15 @@ class Container implements ArrayAccess, ContainerInterface
      */
     public function setShared( $abstract, $concrete = null )
     {
-        //设置共享服务
-        $this->_bind_shared[ $abstract ] = true;
-        return $this->bind( $abstract, $concrete );
+        if ( is_array( $abstract ) ) {
+            foreach ( $abstract as $key => $val ) {
+                $this->setShared( $key, $val );
+            }
+        } else {
+            //设置共享服务
+            $this->_bind_shared[ $abstract ] = true;
+            return $this->bind( $abstract, $concrete );
+        }
     }
 
     /**
@@ -168,6 +232,7 @@ class Container implements ArrayAccess, ContainerInterface
      */
     public function get( $abstract, array $params = [], array $properties = [] )
     {
+        $abstract = $this->getAlias( $abstract );
         // 如果容器中不存在则注册到容器
         if ( !isset( $this->_bind[ $abstract ] ) ) {
             $this->set( $abstract );
@@ -180,10 +245,22 @@ class Container implements ArrayAccess, ContainerInterface
             $this->bindMethod( $object, $properties );
             return $object;
         }
-
+        $definition = $this->_bind[ $abstract ];
+        if ( is_array( $definition ) ) {
+            //绑定的抽象类是数组型，从数组中返回要实例化的class_name
+            $abstract_name = $definition[ 'class' ];
+            if ( !empty( $definition[ 'params' ] ) && empty( $params ) ) {
+                $params = $definition[ 'params' ];//构造函数参数注入
+            }
+            if ( !empty( $definition[ 'properties' ] ) && empty( $properties ) ) {
+                $properties = $definition[ 'properties' ];//通过属性注入的服务
+            }
+        } else {
+            $abstract_name = $definition;
+        }
         //未设置过共享服务状态，默认不使用共享
-        $object = $this->resolve( $this->_bind[ $abstract ], $params );
-        $this->_instances[ $abstract ] = $object;
+        $object = $this->resolve( $abstract_name, $params );
+        $this->setInstance( $abstract, $object );
         //setter 注入
         $this->bindMethod( $object, $properties );
         return $object;
@@ -222,7 +299,7 @@ class Container implements ArrayAccess, ContainerInterface
         try {
             $reflector = new ReflectionClass( $abstract );
         } catch ( ReflectionException $e ) {
-            throw new ClassNotFoundException( 'class not exists: ' . $class, $class, $e );
+            throw new ClassNotFoundException( 'class not exists: ' . $abstract, $abstract, $e );
         }
         // 检查类是否可以实例化
         if ( !$reflector->isInstantiable() ) {
