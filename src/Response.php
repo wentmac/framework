@@ -7,7 +7,7 @@
  * http://www.t-mac.org； 
  */
 namespace Tmac;
-class HttpResponse
+class Response
 {
 
     /**

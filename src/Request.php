@@ -10,7 +10,7 @@ namespace Tmac;
 
 use Tmac\Contract\ConfigInterface;
 
-class HttpRequest
+class Request
 {
     private $config;
 
