@@ -43,7 +43,7 @@ class Controller
     public function init()
     {
         $this->parsePath();
-        $this->getControllerClass( $this->getControllerFile() );
+        $this->initControllerMethod( $this->initController() );
     }
 
     /**
@@ -87,6 +87,7 @@ class Controller
         $this->param[ 'TMAC_CONTROLLER_FILE' ] = ucfirst( $controller ) . 'Controller';
         $this->param[ 'TMAC_CONTROLLER' ] = basename( $controller );
         $this->param[ 'TMAC_ACTION' ] = $action;
+        print_r($this->param);die;
         return true;
     }
 
@@ -97,7 +98,7 @@ class Controller
      * @access private
      *
      */
-    private function getControllerFile()
+    private function initController()
     {
         $class_name = ucfirst( APP_NAME ) . '\Controller\\' . $this->param[ 'TMAC_CONTROLLER_FILE' ];
         try {
@@ -117,7 +118,7 @@ class Controller
      * @param ReflectionClass $reflector
      * @return bool
      */
-    private function getControllerInitMethod( object $controller_object, ReflectionClass $reflector )
+    private function initControllerInitMethod( object $controller_object, ReflectionClass $reflector )
     {
         $init_method = '_init';
 
@@ -139,7 +140,7 @@ class Controller
      * @access private
      *
      */
-    private function getControllerClass( object $controller_object )
+    private function initControllerMethod( object $controller_object )
     {
         $reflector = new ReflectionClass( $controller_object );
         $controller_method = $this->param[ 'TMAC_ACTION' ] . 'Action';
@@ -156,11 +157,14 @@ class Controller
             $message .= $this->config[ 'app.debug' ] ? ":[{$this->param['TMAC_ACTION']}]" : "";
             throw new TmacException( $message );
         }
-        $this->container->httpRequest->init( $this->param );
+        ///* @var $request Request */
+        $request = $this->container->request;
+        $request1 = $this->container->get('request');
+        //$request->init( $this->param );
         //$method->invokeArgs( $controller_object, $args );
 
         //执行init方法
-        $this->getControllerInitMethod( $controller_object, $reflector );
+        $this->initControllerInitMethod( $controller_object, $reflector );
         //执行action方法
         $method->invoke( $controller_object );
     }

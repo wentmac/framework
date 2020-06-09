@@ -47,9 +47,10 @@ class App
 
     /**
      * App constructor.
-     * @param string|string $root_path
+     * @param string $root_path
+     * @param string $web_root
      */
-    public function __construct( string $root_path = '', string $web_root = '' )
+    public function __construct( string $root_path = null, string $web_root = null )
     {
         $this->tmac_path = dirname( __DIR__ ) . DIRECTORY_SEPARATOR . 'src' . DIRECTORY_SEPARATOR;
         $this->root_path = empty( $root_path ) ? $this->getDefaultRootPath() : rtrim( $root_path, DIRECTORY_SEPARATOR ) . DIRECTORY_SEPARATOR;

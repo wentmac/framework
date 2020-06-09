@@ -79,6 +79,76 @@ class Request
         }
         return $array;
     }
+
+    /**
+    Get the userEmail field from the $_GET superglobal. Sanitize the value with the email sanitizer:
+    从$ _GET超全局变量获取userEmail字段。 使用电子邮件净化器净化价值：
+    $email = $request->getQuery('userEmail', 'email', 'some@example.com');
+
+
+     */
+
+
+    public function get($name = '', $default = null){}
+    public function getQuery($name = '', $default = null){}
+    public function getPost($name = '', $default = null){}
+    public function getPut($name = '', $default = null){}
+    public function getDelete($name = '', $default = null){}
+
+
+
+    public function has($name){}
+    public function hasQuery($name){}
+    public function hasPost($name){}
+    public function hasPut($name){}
+    public function hasDelete($name){}
+    public function hasServer($name){}
+    public function hasFiles($onlySuccessful){}
+
+
+    public function isAjax(){}
+    public function isValidHttpMethod(){}
+    public function isMethod(){}
+    public function isPost(){}
+    public function isGet(){}
+    public function isPut(){}
+    public function isPatch(){}
+    public function isHead(){}
+    public function isDelete(){}
+    public function isOptions(){}
+    public function isPurge(){}
+    public function isTrace(){}
+    public function isConnect(){}
+
+
+    public function getHeader($name){}
+    public function getHeaders(){}
+    public function getScheme($name){}
+    public function getUploadedFiles($onlySuccessful){}
+
+    public function getHTTPReferer(){}
+    public function getContentType(){}
+    public function getAcceptableContent(){}
+    public function getBestAccept(){}
+    public function getClientCharsets(){}
+    public function getBestCharset(){}
+    public function getLanguages(){}
+    public function getBestLanguage(){}
+    public function getBasicAuth(){}
+    public function getDigestAuth(){}
+    public function getRawBody(){}
+    public function getJsonRawBody($associative){}
+    public function getServerAddress(){}
+    public function getServerName(){}
+    public function getHttpHost(){}
+    public function getPort(){}
+    public function getURI(){}
+    public function getClientAddress(){}
+    public function getServer($name){}
+    public function getMethod(){}
+    public function getUserAgent(){}
+
+    //doto 增加filter
 }
 
 ?>
