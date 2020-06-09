@@ -96,12 +96,28 @@ class Container implements ArrayAccess, ContainerInterface
      * @access public
      * @param string|array $abstract 类标识、接口
      * @param mixed $concrete 要绑定的类、闭包或者实例
+     * @param boolean $shared_status 设置 注册的类 共享服务，只初始化一次|非共享服务，每次调用初始化
      * @return $this
      */
-    private function bind( string $abstract, $concrete = null )
+    private function bind( $abstract, $concrete = null, $shared_status = false )
     {
+
+        if ( is_array( $abstract ) ) {
+            foreach ( $abstract as $key => $val ) {
+                $this->bind( $key, $val, $shared_status );
+            }
+            return $this;
+        }
+        $this->_bind_shared[ $abstract ] = $shared_status;
+
+        //如果是闭包，设置好绑定关系，返回
+        if ( $concrete instanceof Closure ) {
+            $this->_bind[ $abstract ] = $concrete;
+            return $this;
+        }
         /**
-         *  直接注册一个实例
+         * 如果设置的是一个对象，每次调用都会返回实例化
+         * 直接注册一个实例
          * $di->set("request", new Request());
          * $di["request"] = new Request();
          * //直接传入实例化的对象
@@ -174,15 +190,8 @@ class Container implements ArrayAccess, ContainerInterface
      */
     public function set( $abstract, $concrete = null )
     {
-        if ( is_array( $abstract ) ) {
-            foreach ( $abstract as $key => $val ) {
-                $this->set( $key, $val );
-            }
-        } else {
-            //设置 注册的类 为非共享服务，每次调用初始化
-            $this->_bind_shared[ $abstract ] = false;
-            return $this->bind( $abstract, $concrete );
-        }
+        //设置 注册的类 为非共享服务，每次调用初始化
+        return $this->bind( $abstract, $concrete, false );
     }
 
     /**
@@ -204,15 +213,8 @@ class Container implements ArrayAccess, ContainerInterface
      */
     public function setShared( $abstract, $concrete = null )
     {
-        if ( is_array( $abstract ) ) {
-            foreach ( $abstract as $key => $val ) {
-                $this->setShared( $key, $val );
-            }
-        } else {
-            //设置共享服务
-            $this->_bind_shared[ $abstract ] = true;
-            return $this->bind( $abstract, $concrete );
-        }
+        //设置共享服务
+        return $this->bind( $abstract, $concrete, true );
     }
 
     /**
@@ -237,7 +239,6 @@ class Container implements ArrayAccess, ContainerInterface
         if ( !isset( $this->_bind[ $abstract ] ) ) {
             $this->set( $abstract );
         }
-
         $check_bind_shared = $this->isShared( $abstract );
         //如果有共享返回共享服务
         if ( $check_bind_shared && isset( $this->_instances[ $abstract ] ) ) {
