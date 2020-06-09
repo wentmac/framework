@@ -89,6 +89,10 @@ class Container implements ArrayAccess, ContainerInterface
             if ( is_string( $bind ) ) {
                 return $this->getAlias( $bind );
             }
+            if ( is_array( $bind ) && isset( $bind[ 'class' ] ) ) {
+                //解决了在_instance中保存的都是真实类名当key值，除了匿名函数调用，object的等解决
+                $abstract = $bind[ 'class' ];
+            }
         }
         return $abstract;
     }
@@ -103,17 +107,16 @@ class Container implements ArrayAccess, ContainerInterface
      */
     private function bind( $abstract, $concrete = null, $shared_status = false )
     {
-
         if ( is_array( $abstract ) ) {
             foreach ( $abstract as $key => $val ) {
                 $this->bind( $key, $val, $shared_status );
             }
             return $this;
         }
-        $this->_bind_shared[ $abstract ] = $shared_status;
 
         //如果是闭包，设置好绑定关系，返回
         if ( $concrete instanceof Closure ) {
+            $this->setBindShared( $abstract, $shared_status );
             $this->_bind[ $abstract ] = $concrete;
             return $this;
         }
@@ -129,6 +132,7 @@ class Container implements ArrayAccess, ContainerInterface
          * 对于直接注册已经实例化的对象，如上代码中的a3服务，set和setShared效果是一样的。
          */
         if ( is_object( $concrete ) ) {
+            $this->setBindShared( $abstract, $shared_status );
             $this->setInstance( $abstract, $concrete );
             return $this;
         }
@@ -164,8 +168,27 @@ class Container implements ArrayAccess, ContainerInterface
                 throw new ClassNotFoundException( 'Container Set Error:A class definition requires a "class" member.' . $abstract . var_export( $concrete ) );
             }
         }
+        if ( is_array( $concrete ) ) {
+            //如果是数组，取真实绑定名
+            $this->setBindShared( $concrete[ 'class' ], $shared_status );
+            $this->_bind[ $concrete[ 'class' ] ] = $concrete;
+        } else {
+            $this->setBindShared( $abstract, $shared_status );
+        }
         $this->_bind[ $abstract ] = $concrete;
         return $this;
+    }
+
+
+    /**
+     * 设置绑定的共享状态
+     * @param $abstract
+     * @param bool $shared_status
+     */
+    private function setBindShared( $abstract, $shared_status = false ): void
+    {
+        $abstract_name = $this->getAlias( $abstract );
+        !isset( $this->_bind_shared[ $abstract_name ] ) && $this->_bind_shared[ $abstract_name ] = $shared_status;
     }
 
 
@@ -255,7 +278,7 @@ class Container implements ArrayAccess, ContainerInterface
         if ( $definition instanceof Closure ) {
             // 使用匿名函数去设置服务，这个实例将被延迟加载
             //$object = $definition( $this, ...$params );
-            $object = $this->resolveFunction($definition,$params);
+            $object = $this->resolveFunction( $definition, $params );
             $this->setInstance( $abstract, $object );
             //setter 注入
             $this->bindMethod( $object, $properties );
@@ -277,7 +300,7 @@ class Container implements ArrayAccess, ContainerInterface
         }
         //未设置过共享服务状态，默认不使用共享
         $object = $this->resolveClass( $abstract_name, $params );
-        $this->setInstance( $abstract, $object );
+        $this->setInstance( $abstract_name, $object );
         //setter 注入
         $this->bindMethod( $object, $properties );
         return $object;
@@ -328,10 +351,6 @@ class Container implements ArrayAccess, ContainerInterface
      */
     private function resolveClass( $abstract, $params )
     {
-        if ( $abstract instanceof Closure ) {
-            // 使用匿名函数去设置服务，这个实例将被延迟加载
-            return $abstract( $this, $params );
-        }
         try {
             $reflector = new ReflectionClass( $abstract );
         } catch ( ReflectionException $e ) {

@@ -87,7 +87,6 @@ class Controller
         $this->param[ 'TMAC_CONTROLLER_FILE' ] = ucfirst( $controller ) . 'Controller';
         $this->param[ 'TMAC_CONTROLLER' ] = basename( $controller );
         $this->param[ 'TMAC_ACTION' ] = $action;
-        print_r($this->param);die;
         return true;
     }
 
