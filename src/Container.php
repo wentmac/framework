@@ -12,12 +12,14 @@ use Closure;
 use Exception;
 use ReflectionClass;
 use ReflectionException;
+use ReflectionFunction;
 use ReflectionParameter;
 use ReflectionFunctionAbstract;
 use ArrayAccess;
 use Psr\Container\ContainerInterface;
 use Tmac\Exception\ClassNotFoundException;
 use InvalidArgumentException;
+use Tmac\Exception\FuncNotFoundException;
 
 class Container implements ArrayAccess, ContainerInterface
 {
@@ -156,7 +158,7 @@ class Container implements ArrayAccess, ContainerInterface
          * ]);
          */
         if ( is_array( $concrete ) && !isset( $concrete[ 'class' ] ) ) {
-            if ( strpos( $class, '\\' ) !== false ) {
+            if ( strpos( $abstract, '\\' ) !== false ) {
                 $concrete[ 'class' ] = $abstract;
             } else {
                 throw new ClassNotFoundException( 'Container Set Error:A class definition requires a "class" member.' . $abstract . var_export( $concrete ) );
@@ -246,7 +248,21 @@ class Container implements ArrayAccess, ContainerInterface
             $this->bindMethod( $object, $properties );
             return $object;
         }
+
         $definition = $this->_bind[ $abstract ];
+
+        //如果绑定的是匿名函数回调
+        if ( $definition instanceof Closure ) {
+            // 使用匿名函数去设置服务，这个实例将被延迟加载
+            //$object = $definition( $this, ...$params );
+            $object = $this->resolveFunction($definition,$params);
+            $this->setInstance( $abstract, $object );
+            //setter 注入
+            $this->bindMethod( $object, $properties );
+            return $object;
+        }
+
+        //如果bind设置的绑定是数组
         if ( is_array( $definition ) ) {
             //绑定的抽象类是数组型，从数组中返回要实例化的class_name
             $abstract_name = $definition[ 'class' ];
@@ -260,11 +276,30 @@ class Container implements ArrayAccess, ContainerInterface
             $abstract_name = $definition;
         }
         //未设置过共享服务状态，默认不使用共享
-        $object = $this->resolve( $abstract_name, $params );
+        $object = $this->resolveClass( $abstract_name, $params );
         $this->setInstance( $abstract, $object );
         //setter 注入
         $this->bindMethod( $object, $properties );
         return $object;
+    }
+
+    /**
+     * 执行函数或者闭包方法 支持参数调用
+     * @param string|Closure $function 函数或者闭包
+     * @param array $params
+     * @return mixed
+     * @throws ReflectionException
+     */
+    private function resolveFunction( $function, array $params = [] )
+    {
+        try {
+            $reflect = new ReflectionFunction( $function );
+        } catch ( ReflectionException $e ) {
+            throw new FuncNotFoundException( "function not exists: {$function}()", $function, $e );
+        }
+        //获取到构造函数中的参数依赖
+        $args = $this->bindParams( $reflect, $params );
+        return $function( ...$args );
     }
 
     /**
@@ -291,7 +326,7 @@ class Container implements ArrayAccess, ContainerInterface
      * @return mixed|object
      * @throws Exception
      */
-    private function resolve( $abstract, $params )
+    private function resolveClass( $abstract, $params )
     {
         if ( $abstract instanceof Closure ) {
             // 使用匿名函数去设置服务，这个实例将被延迟加载
