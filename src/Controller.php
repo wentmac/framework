@@ -84,10 +84,34 @@ class Controller
         }
         if ( empty( $action ) )
             $action = 'index';
-        $this->param[ 'TMAC_CONTROLLER_FILE' ] = ucfirst( $controller ) . 'Controller';
-        $this->param[ 'TMAC_CONTROLLER' ] = basename( $controller );
+
+        $tmac_controller = basename( $controller );
+        if ( $tmac_controller === $controller ) {
+            $tmac_controller_file = '';
+        } else {
+            //如果子目录的控制器  比如 src/Module/web/Controller/user/IndexController.php，取出目录结构
+            $tmac_controller_file = $this->getControllerFilePath( $controller );
+        }
+
+        $this->param[ 'TMAC_CONTROLLER' ] = ucfirst( $tmac_controller ) . 'Controller';
+        $this->param[ 'TMAC_CONTROLLER_FILE' ] = $tmac_controller_file;
         $this->param[ 'TMAC_ACTION' ] = $action;
+        echo '<pre>';
+        print_r( $this->param );
         return true;
+    }
+
+    /**
+     * user/ return user\
+     * user/bill/ return user\bill\
+     * @param $controller
+     * @return string|string[]
+     */
+    private function getControllerFilePath( $controller )
+    {
+        $urlSeparatorPosition = strrpos( $controller, '/' );
+        $controller = substr( $controller, 0, $urlSeparatorPosition + 1 );
+        return str_replace( '/', '\\', $controller );
     }
 
     /**
@@ -99,13 +123,15 @@ class Controller
      */
     private function initController()
     {
-        $class_name = ucfirst( APP_NAME ) . '\Controller\\' . $this->param[ 'TMAC_CONTROLLER_FILE' ];
+        $class_name = ucfirst( APP_NAME ) . '\Controller\\' . $this->param[ 'TMAC_CONTROLLER_FILE' ] . $this->param[ 'TMAC_CONTROLLER' ];
         try {
             $controller_object = $this->container->get( $class_name );
         } catch ( ClassNotFoundException $e ) {
             $message = "错误的请求，找不到Controller文件";
-            $message .= $this->config[ 'app.debug' ] ? ":[$class_name]" : "";
-            $message .= $e->getMessage();
+            if ( $this->config[ 'app.debug' ] ) {
+                $message .= [ $class_name ];
+                $message .= $e->getMessage();
+            }
             throw new TmacException( $message );
         }
         return $controller_object;
@@ -158,7 +184,7 @@ class Controller
         }
         ///* @var $request Request */
         $request = $this->container->request;
-        $request1 = $this->container->get('request');
+        $request1 = $this->container->get( 'request' );
         //$request->init( $this->param );
         //$method->invokeArgs( $controller_object, $args );
 
