@@ -116,8 +116,8 @@ class Container implements ArrayAccess, ContainerInterface
 
         //如果是闭包，设置好绑定关系，返回
         if ( $concrete instanceof Closure ) {
-            $this->setBindShared( $abstract, $shared_status );
             $this->_bind[ $abstract ] = $concrete;
+            $this->setBindShared( $abstract, $shared_status );
             return $this;
         }
         /**
@@ -132,6 +132,7 @@ class Container implements ArrayAccess, ContainerInterface
          * 对于直接注册已经实例化的对象，如上代码中的a3服务，set和setShared效果是一样的。
          */
         if ( is_object( $concrete ) ) {
+            $this->_bind[ $abstract ] = $concrete;
             $this->setBindShared( $abstract, $shared_status );
             $this->setInstance( $abstract, $concrete );
             return $this;
@@ -199,6 +200,14 @@ class Container implements ArrayAccess, ContainerInterface
      */
     private function isShared( $abstract )
     {
+        /**
+         * 这种类型注册服务需要一个对象。
+         * 实际上，这个服务不再需要初始化，因为它已经是一个对象，可以说，这不是一个真正的依赖注入，
+         * 但是如果你想强制总是返回相同的对象/值，使用这种方式还是有用的:
+         */
+        if ( is_object( $this->_bind[ $abstract ] ) ) {
+            return true;
+        }
         //setShared和set方法中是否初始绑定了共享服务
         if ( isset( $this->_bind_shared[ $abstract ] ) && $this->_bind_shared[ $abstract ] === true ) {
             return true;
