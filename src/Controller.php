@@ -64,7 +64,8 @@ class Controller
         if ( empty( $_GET[ 'm' ] ) ) {
             //如果没有参数任何参数
             $this->param[ 'TMAC_CONTROLLER_FILE' ] = 'IndexController';
-            $this->param[ 'TMAC_CONTROLLER' ] = $this->param[ 'TMAC_ACTION' ] = 'index';
+            $this->param[ 'TMAC_CONTROLLER' ] = '';
+            $this->param[ 'TMAC_ACTION' ] = 'index';
             return true;
         }
         $queryString = $_GET[ 'm' ];
@@ -87,6 +88,7 @@ class Controller
 
         $tmac_controller = basename( $controller );
         if ( $tmac_controller === $controller ) {
+            //没有二级目录的控制器，默认都在Conttroller目录下的控制器
             $tmac_controller_file = '';
         } else {
             //如果子目录的控制器  比如 src/Module/web/Controller/user/IndexController.php，取出目录结构
@@ -96,8 +98,6 @@ class Controller
         $this->param[ 'TMAC_CONTROLLER' ] = ucfirst( $tmac_controller ) . 'Controller';
         $this->param[ 'TMAC_CONTROLLER_FILE' ] = $tmac_controller_file;
         $this->param[ 'TMAC_ACTION' ] = $action;
-        echo '<pre>';
-        print_r( $this->param );
         return true;
     }
 
@@ -129,7 +129,7 @@ class Controller
         } catch ( ClassNotFoundException $e ) {
             $message = "错误的请求，找不到Controller文件";
             if ( $this->config[ 'app.debug' ] ) {
-                $message .= [ $class_name ];
+                $message .= "[ $class_name ]";
                 $message .= $e->getMessage();
             }
             throw new TmacException( $message );
@@ -182,16 +182,15 @@ class Controller
             $message .= $this->config[ 'app.debug' ] ? ":[{$this->param['TMAC_ACTION']}]" : "";
             throw new TmacException( $message );
         }
-        ///* @var $request Request */
+        /* @var $request Request */
         $request = $this->container->request;
-        $request1 = $this->container->get( 'request' );
-        //$request->init( $this->param );
-        //$method->invokeArgs( $controller_object, $args );
+        $request->init( $this->param );
 
         //执行init方法
         $this->initControllerInitMethod( $controller_object, $reflector );
         //执行action方法
         $method->invoke( $controller_object );
+        //$method->invokeArgs( $controller_object, $args );
     }
 
     /**

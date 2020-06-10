@@ -22,7 +22,6 @@ class Request
     public function __construct( ConfigInterface $config )
     {
         $this->config = $config;
-
     }
 
     public function init( $request )

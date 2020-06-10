@@ -9,6 +9,8 @@
 
 namespace Tmac;
 
+use Exception;
+
 class App
 {
 
@@ -88,7 +90,7 @@ class App
         //设置编码
         header( "Content-type: text/html;charset={$this->container->config['app.charset']}" );
         //设置时区
-        @date_default_timezone_set( $this->container->config[ 'app.default_timezone' ] );
+        date_default_timezone_set( $this->container->config[ 'app.default_timezone' ] );
         //生成htaccess文件
         $htaccess = $this->web_root_path . '.htaccess';
         if ( $this->container->config[ 'app.url_rewrite' ] ) {
@@ -111,7 +113,7 @@ class App
         //页面报错
         $this->container->config[ 'app.error_report' ] ? error_reporting( E_ALL ) : error_reporting( 0 );
         //控制异常
-        set_exception_handler( array( $this, 'exception' ) );
+        set_exception_handler( array( $this, 'tmacException' ) );
         //是否自动开启Session 您可以在控制器中初始化，也可以在系统中自动加载
         if ( $this->container->config[ 'app.session.start' ] ) {
             $this->container->session->init();
@@ -314,7 +316,7 @@ class App
      * @param object $e
      * @access public
      */
-    public final function exception( $e )
+    public final function tmacException( $e )
     {
         if ( $e instanceof Exception ) {
             $e->getError();
