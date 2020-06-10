@@ -90,7 +90,7 @@ class Container implements ArrayAccess, ContainerInterface
                 return $this->getAlias( $bind );
             }
             if ( is_array( $bind ) && isset( $bind[ 'class' ] ) ) {
-                //解决了在_instance中保存的都是真实类名当key值，除了匿名函数调用，object的等解决
+                //解决了在_instance中保存的都是真实类名当key值
                 $abstract = $bind[ 'class' ];
             }
         }
@@ -130,6 +130,24 @@ class Container implements ArrayAccess, ContainerInterface
          * $a3 = $di['a3'];//可以直接通过数组方式获取服务对象
          * echo $a3->name."<br/>";//小唐
          * 对于直接注册已经实例化的对象，如上代码中的a3服务，set和setShared效果是一样的。
+         *
+         * 类实例（CLASS INSTANCES）¶
+         * 这种类型注册服务需要一个对象。实际上，这个服务不再需要初始化，因为它已经是一个对象，
+         * 可以说，这不是一个真正的依赖注入，但是如果你想强制总是返回相同的对象/值，使用这种方式还是有用的:
+         *
+         *
+         * use Phalcon\Http\Request;
+         *
+         * // 返回 Phalcon\Http\Request(); 对象
+         * $di->set(
+         * "request",
+         * new Request()
+         * );
+         *
+         * //YII2中的实现方法
+         * // 注册一个组件实例
+         * // $container->get('pageCache') 每次被调用时都会返回同一个实例。
+         * $container->set('pageCache', new FileCache);
          */
         if ( is_object( $concrete ) ) {
             $this->_bind[ $abstract ] = $concrete;
@@ -188,10 +206,26 @@ class Container implements ArrayAccess, ContainerInterface
      */
     private function setBindShared( $abstract, $shared_status = false ): void
     {
-        $abstract_name = $this->getAlias( $abstract );
+        //$abstract_name = $this->getAlias( $abstract );
+        $abstract_name = $abstract;
         !isset( $this->_bind_shared[ $abstract_name ] ) && $this->_bind_shared[ $abstract_name ] = $shared_status;
     }
 
+    /**
+     * 取得容器中 依赖关系名称 绑定的共享状态。
+     * 如果找到依赖关系名称有别名，并且未绑定过，就绑定设置别名相相同的共享状态
+     * 解决了依赖关系名称与别名服务共享状态保持一致问题。
+     * @param $abstract
+     * @return bool|mixed
+     */
+    private function getBindShared( $abstract )
+    {
+        if ( isset( $this->_bind_shared[ $abstract ] ) ) {
+            return $this->_bind_shared[ $abstract ];
+        }
+        //没有找到默认返回False不设置服务共享
+        return false;
+    }
 
     /**
      * 检测是否设置了共享服务
@@ -268,10 +302,13 @@ class Container implements ArrayAccess, ContainerInterface
      */
     public function get( $abstract, array $params = [], array $properties = [] )
     {
+        //取得容器中 依赖关系名称 绑定的共享状态。如果找到依赖关系名称有别名，并且未绑定过，就绑定设置别名相相同的共享状态
+        //解决了依赖关系名称与别名服务共享状态保持一致问题。
+        $abstract_shared_status = $this->getBindShared( $abstract );
         $abstract = $this->getAlias( $abstract );
         // 如果容器中不存在则注册到容器
         if ( !isset( $this->_bind[ $abstract ] ) ) {
-            $this->set( $abstract );
+            $this->bind( $abstract, null, $abstract_shared_status );
         }
         $check_bind_shared = $this->isShared( $abstract );
         //如果有共享返回共享服务
