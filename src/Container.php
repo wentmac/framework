@@ -440,7 +440,7 @@ class Container implements ArrayAccess, ContainerInterface
      * @return array
      * @throws ReflectionException
      */
-    private function bindParams( ReflectionFunctionAbstract $reflect, array $vars = [] ): array
+    public function bindParams( ReflectionFunctionAbstract $reflect, array $vars = [] ): array
     {
         //获取函数定义的参数数目，包括可选参数,构造函数参数数量如果为0，就返回空数据
         if ( $reflect->getNumberOfParameters() == 0 ) {

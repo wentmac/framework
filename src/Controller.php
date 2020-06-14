@@ -154,8 +154,9 @@ class Controller
         if ( $method->isPublic() === FALSE ) {
             return true;
         }
-        //$method->invokeArgs( $controller_object, $args );
-        $method->invoke( $controller_object );
+        $args = $this->container->bindParams( $method );
+        $method->invokeArgs( $controller_object, $args );
+        //$method->invoke( $controller_object );
     }
 
     /**
@@ -177,20 +178,18 @@ class Controller
         }
 
         $method = $reflector->getMethod( $controller_method );
+        $args = $this->container->bindParams( $method );
+
         if ( $method->isPublic() === FALSE ) {
             $message = "Action为私有方法";
             $message .= $this->config[ 'app.debug' ] ? ":[{$this->param['TMAC_ACTION']}]" : "";
             throw new TmacException( $message );
         }
-        /* @var $request Request */
-        $request = $this->container->request;
-        $request->init( $this->param );
-
         //执行init方法
         $this->initControllerInitMethod( $controller_object, $reflector );
         //执行action方法
-        $method->invoke( $controller_object );
-        //$method->invokeArgs( $controller_object, $args );
+        $method->invokeArgs( $controller_object, $args );
+        //$method->invoke( $controller_object );
     }
 
     /**

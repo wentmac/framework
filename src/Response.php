@@ -10,6 +10,10 @@ namespace Tmac;
 class Response
 {
 
+    public function __construct()
+    {
+    }
+
     /**
      * 设置一个cookie
      * 
