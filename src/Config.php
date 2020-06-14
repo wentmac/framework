@@ -151,6 +151,9 @@ class Config implements ConfigInterface, ArrayAccess
         }
         $config = $this->config;
         if ( $all_config_status ) {
+            if ( isset( $this->config[ $config_name ] ) ) {
+                return $this->config[ $config_name ];
+            }
             return $config;
         }
         // 按.拆分成多维数组进行判断
@@ -188,7 +191,6 @@ class Config implements ConfigInterface, ArrayAccess
         return $result;
     }
 
-
     public function offsetExists( $key )
     {
         return $this->has( $key );
@@ -201,7 +203,7 @@ class Config implements ConfigInterface, ArrayAccess
 
     public function offsetSet( $key, $value )
     {
-        $this->set( $key, $value );
+        $this->set( $value, $key );
     }
 
     public function offsetUnset( $key )

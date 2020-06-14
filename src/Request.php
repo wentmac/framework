@@ -92,6 +92,9 @@ class Request
      */
     public function __construct( ConfigInterface $config, Filter $filter )
     {
+        echo '<br>===================<br>';
+        echo 'construct request';
+        echo '<br>===================<br>';
         $this->config = $config;
 
         $this->get = $_GET;

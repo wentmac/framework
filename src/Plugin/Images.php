@@ -183,7 +183,7 @@ class Images
      */
     function loadFile ( $file )
     {
-        if ( !file_exists ( $file ) ) {
+        if ( !is_file ( $file ) ) {
             $this->exceptionFunc ( "指定的文件不存在 => $file" );
             return false;
         }
@@ -387,7 +387,7 @@ class Images
      */
     function textMark ( $text, $font, $color = "#000000", $size = 9, $path = null )
     {
-        if ( !file_exists ( $font ) ) {
+        if ( !is_file ( $font ) ) {
             $this->exceptionFunc ( "字体文件不可用 => $font" );
             return false;
         }
@@ -575,7 +575,7 @@ class Images
     //创建目录 递归创建多级目录
     function CheckFolder ( $filedir )
     {
-        if ( !file_exists ( $filedir ) ) {            
+        if ( !is_dir ( $filedir ) ) {
             if ( !mkdir ( $filedir, 0777, true ) ) {
                 $this->exceptionFunc ( '指定的路径权限不足 =>' . $filedir );
                 return false;
@@ -592,7 +592,7 @@ class Images
     function getImageType ( $file_path )
     {
         $type_array = array(1 => 'gif', 2 => 'jpg', 3 => 'png', 4 => 'swf', 5 => 'psd', 6 => 'bmp', 15 => 'wbmp');
-        if ( file_exists ( $file_path ) ) {
+        if ( is_file ( $file_path ) ) {
             $img_info = @getimagesize ( $file_path );
             if ( isset ( $type_array[ $img_info[ 2 ] ] ) ) {
                 return $type_array[ $img_info[ 2 ] ];

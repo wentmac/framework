@@ -7,8 +7,9 @@
  * http://www.t-mac.org；
  */
 namespace Tmac\Plugin;
+use Exception;
 
-class ApiException extends \Exception
+class ApiException extends Exception
 {
 
     /**

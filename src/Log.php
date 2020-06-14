@@ -119,7 +119,7 @@ class Log
      */
     private function checkFolder( $filedir )
     {
-        if ( !file_exists( $filedir ) ) {
+        if ( !is_dir( $filedir ) ) {
             if ( !mkdir( $filedir, 0777, true ) ) {
                 $this->errorMessage = '指定的路径权限不足 =>' . $filedir;
                 return false;

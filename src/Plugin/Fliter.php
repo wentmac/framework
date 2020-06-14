@@ -17,15 +17,7 @@ class Filter
     protected $success = true; //Filter过滤参数的状态
     protected $requiredField = true; //Filter 当前field必选
     protected $failMessage; //最早的一次的失败信息
-
-    /**
-     * Filter实例
-     *
-     * @var object
-     * @static
-     */
-    protected static $instance = null;
-
+    
     /**
      * Filter constructor.
      */
@@ -34,21 +26,6 @@ class Filter
 
     }
 
-
-    /**
-     * 取得Filter实例
-     *
-     * @return object
-     * @access public
-     * @static
-     */
-    public function getInstance()
-    {
-        if ( !isset( $this->$instance ) ) {
-            $this->$instance = new Filter;
-        }
-        return $this->$instance;
-    }
 
     /**
      * 取Filter类中的错误信息

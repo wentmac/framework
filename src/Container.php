@@ -20,6 +20,7 @@ use Psr\Container\ContainerInterface;
 use Tmac\Exception\ClassNotFoundException;
 use InvalidArgumentException;
 use Tmac\Exception\FuncNotFoundException;
+use Tmac\Exception\TmacException;
 
 class Container implements ArrayAccess, ContainerInterface
 {
@@ -308,6 +309,7 @@ class Container implements ArrayAccess, ContainerInterface
         $abstract = $this->getAlias( $abstract );
         // 如果容器中不存在则注册到容器
         if ( !isset( $this->_bind[ $abstract ] ) ) {
+            var_dump($abstract).'--'.var_dump($abstract_shared_status);
             $this->bind( $abstract, null, $abstract_shared_status );
         }
         $check_bind_shared = $this->isShared( $abstract );
@@ -404,7 +406,7 @@ class Container implements ArrayAccess, ContainerInterface
         }
         // 检查类是否可以实例化
         if ( !$reflector->isInstantiable() ) {
-            throw new Exception( "Class {$abstract} is not instantiable" );
+            throw new TmacException( "Class {$abstract} is not instantiable" );
         }
         // 通过反射获取到目标类的构造函数
         $constructor = $reflector->getConstructor();

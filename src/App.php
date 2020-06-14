@@ -10,6 +10,7 @@
 namespace Tmac;
 
 use Exception;
+use Tmac\Exception\TmacException;
 
 class App
 {
@@ -35,17 +36,34 @@ class App
      */
     protected $app_path = '';
 
+    /**
+     * 缓存目录
+     * @var string
+     */
+    protected $var_path = '';
+
     protected $web_root_path = '';
+
+    protected $web_template_path = '';
+
     protected $config_path = '';
 
     /**
-     * Model的instance数组
-     * @var array
+     * @return string
      */
-    protected static $model = array();
-    protected static $plugin = array();
-    protected static $config = array();
+    public function getVarPath(): string
+    {
+        return $this->var_path;
+    }
 
+
+    /**
+     * @return string
+     */
+    public function getWebTemplatePath(): string
+    {
+        return $this->web_template_path;
+    }
 
     /**
      * App constructor.
@@ -57,9 +75,18 @@ class App
         $this->tmac_path = dirname( __DIR__ ) . DIRECTORY_SEPARATOR . 'src' . DIRECTORY_SEPARATOR;
         $this->root_path = empty( $root_path ) ? $this->getDefaultRootPath() : rtrim( $root_path, DIRECTORY_SEPARATOR ) . DIRECTORY_SEPARATOR;
         $this->app_path = $this->root_path . 'src' . DIRECTORY_SEPARATOR;
-        $this->web_root_path = $web_root . 'src' . DIRECTORY_SEPARATOR;
+        $this->var_path = $this->root_path . 'var' . DIRECTORY_SEPARATOR;
+        $this->web_root_path = empty( $web_root ) ? $this->root_path . 'public' . DIRECTORY_SEPARATOR : $web_root . DIRECTORY_SEPARATOR;
 
+        if ( empty( APP_NAME ) ) {
+            $web_template_path = '';
+        } else {
+            $web_template_path = 'Module' . DIRECTORY_SEPARATOR . APP_NAME . DIRECTORY_SEPARATOR;
+        }
+        $this->web_template_path = $this->app_path . $web_template_path;
         $this->config_path = $this->root_path . 'config' . DIRECTORY_SEPARATOR;
+
+        $this->begin_time = time();
     }
 
     /**
@@ -70,6 +97,12 @@ class App
         if ( is_file( $this->config_path . 'provider.php' ) ) {
             $this->container->setShared( include $this->config_path . 'provider.php' );
         }
+        $config_array = [
+            'web_template_path' => $this->web_template_path,
+            'var_path' => $this->var_path,
+            'now_time' => $this->begin_time
+        ];
+        $this->container->config->set( $config_array);
     }
 
     /**
@@ -79,7 +112,7 @@ class App
     {
         $this->load();
         $this->initialize();
-        $this->container->controller->init();
+        $this->container->route->init();
     }
 
     /**
@@ -119,158 +152,7 @@ class App
             $this->container->session->init();
         }
     }
-
-    /**
-     * 载入Model
-     * @param string $model Model名 类名必须与文件名一致 "/"作为目录分隔符
-     * @param string $app_name 项目名（如果需要跨项目调用）
-     * @param string $ext 后缀名
-     * @return object
-     * @access public
-     * @static
-     */
-    public final static function model( $model, $app_name = APP_NAME, $ext = '.class.php' )
-    {
-        $modelName = $model . '_' . $app_name;
-        //判断是否已经创建过此Model
-        if ( !array_key_exists( $modelName, self::$model ) ) {
-            //不存在
-            $file = APPS_PATH . $app_name . DIRECTORY_SEPARATOR . APPLICATION . DIRECTORY_SEPARATOR . 'Model' . DIRECTORY_SEPARATOR . 'service' . DIRECTORY_SEPARATOR . $model . $ext;
-            if ( is_file( $file ) ) {
-                include( $file );
-                if ( strpos( $model, '/' ) === false ) {
-                    $className = $model . '_' . $app_name;
-                } else {
-                    $className = str_replace( '/', '_', $model ) . '_' . $app_name;
-                }
-                $className = 'service_' . $className; //框架三层架构默认Tmac::model('article',APP_ADMIN_NAME);调用Model/service/article.class.php
-                $m = new $className();
-                //执行_init方法
-                in_array( '_init', get_class_methods( $className ) ) && $m->_init();
-                //储存到model数组中 下次调用不再new
-                self::$model[ $modelName ] = $m;
-                return $m;
-            } else {
-                throw new TmacException ( '找不到Model文件:' . $file );
-            }
-        } else {
-            in_array( '_init', get_class_methods( self::$model[ $modelName ] ) ) && self::$model[ $modelName ]->_init();
-            return self::$model[ $modelName ];
-        }
-    }
-
-    /**
-     * 载入插件
-     * @param string $plugin 插件名 插件类名必须与文件名一致 "."作为目录分隔符
-     * @param string $app_name 项目名（如果需要跨项目调用）
-     * @param array $param 插件参数
-     * @param string $ext 插件后缀名
-     * @return object
-     * @access public
-     * @static
-     */
-    public final static function plugin( $plugin, $app_name = null, $param = array(), $ext = '.class.php' )
-    {
-        //判断是否已经创建过此$plugin
-        if ( !array_key_exists( $plugin, self::$plugin ) ) {
-            if ( empty ( $app_name ) ) {
-                $file = TMAC_PATH . 'Plugin' . DIRECTORY_SEPARATOR . $plugin . $ext;
-            } else {
-                $file = APPS_PATH . $app_name . DIRECTORY_SEPARATOR . APPLICATION . DIRECTORY_SEPARATOR . 'Plugin' . DIRECTORY_SEPARATOR . $plugin . $ext;
-            }
-            if ( !is_file( $file ) ) {
-                throw new TmacException ( '找不到Plugin文件:' . $file );
-            }
-            include( $file );
-            $pluginName = basename( $plugin );
-            $p = empty ( $param ) ? new $pluginName() : new $pluginName ( $param );
-            //储存到$plugin数组中 下次调用不再new
-            self::$plugin[ $plugin ] = $p;
-            return $p;
-        } else {
-            //存在
-            return self::$plugin[ $plugin ];
-        }
-    }
-
-    /**
-     * 输出模板
-     * @param string $view 模板路径以及文件名 可以用.作为目录分割
-     */
-    public final static function view( $view = null, $tVar = null )
-    {
-        global $TmacConfig;
-        $options = array(
-            'template_dir' => APPLICATION_ROOT . $TmacConfig[ 'Template' ][ 'template' ], //设置系统模板文件的存放目录
-            'cache_dir' => VAR_ROOT . $TmacConfig[ 'Template' ][ 'cache_dir' ], //指定缓存文件存放目录
-            'auto_update' => $TmacConfig[ 'Template' ][ 'auto_update' ], //当模板文件有改动时重新生成缓存 [关闭该项会快一些]
-            'cache_lifetime' => $TmacConfig[ 'Template' ][ 'cache_lifetime' ], //缓存生命周期(分钟)，为 0 表示永久 [设置为 0 会快一些]
-            'suffix' => $TmacConfig[ 'Template' ][ 'suffix' ], //模板后缀
-            'cache_open' => $TmacConfig[ 'Template' ][ 'cache_open' ], //是否开启缓存，程序调试时使用
-            'value' => $tVar    //压到模板里的变量数据                               
-        );
-        $tmac_template_update_cache = Input::get( 'tmac_template_update_cache', 0 )->int();
-        if ( $tmac_template_update_cache ) {
-            $options[ 'auto_update' ] = true;//当模板文件有改动时重新生成缓存（适用于关闭主动更新时用于手动更新模板缓存）
-        }
-
-        $tpl = Template::getInstance();
-        $tpl->setOptions( $options ); //设置模板参数
-        //如果是前台的模板就不用前缀（模板目录名）        
-        if ( $view == $TmacConfig[ 'Template' ][ 'template_dir' ] . DIRECTORY_SEPARATOR ) {
-            //如果模板路径，文件名为空的话就尝试把TMAC_CONTROLLER_FILE当作模板路径，文件名        
-            $view_new = strtolower( $_GET[ 'TMAC_CONTROLLER_FILE' ] );  //都转成小写的
-            $view = $view . $view_new;  //前面加上模板目录名
-        }
-        $tpl->show( $view );
-    }
-
-    /**
-     * 原生PHP输出模板
-     * @param string $view 模板路径以及文件名 可以用.作为目录分割
-     */
-    public final static function display( $view, $tVar = null )
-    {
-        $file = APPLICATION_ROOT . $GLOBALS[ 'TmacConfig' ][ 'Template' ][ 'template' ]
-            . DIRECTORY_SEPARATOR . $GLOBALS[ 'TmacConfig' ][ 'Template' ][ 'template_dir' ]
-            . DIRECTORY_SEPARATOR . $view
-            . $GLOBALS[ 'TmacConfig' ][ 'Template' ][ 'suffix' ];
-        if ( !empty ( $tVar ) ) {
-            extract( $tVar, EXTR_OVERWRITE );
-        }
-        include $file;
-    }
-
-    /**
-     * 在原生PHP模板中include其他模板
-     * include Tmac::loadView ( 'inc/header' );
-     * @param type $view
-     */
-    public final static function loadView( $view )
-    {
-        $file = APPLICATION_ROOT . $GLOBALS[ 'TmacConfig' ][ 'Template' ][ 'template' ]
-            . DIRECTORY_SEPARATOR . $GLOBALS[ 'TmacConfig' ][ 'Template' ][ 'template_dir' ]
-            . DIRECTORY_SEPARATOR . $view
-            . $GLOBALS[ 'TmacConfig' ][ 'Template' ][ 'suffix' ];
-        return $file;
-    }
-
-    /**
-     * Searches for a file in the [Cascading Filesystem](Application)
-     * @param string $file 文件路径
-     * @return void
-     * @access public
-     * @static
-     */
-    public final static function findFile( $file, $app_name = APP_NAME, $ext = '.class.php' )
-    {
-        $filePath = APPS_PATH . $app_name . DIRECTORY_SEPARATOR . APPLICATION . DIRECTORY_SEPARATOR . 'Plugin' . DIRECTORY_SEPARATOR . $file . $ext;
-        if ( is_file( $filePath ) ) {
-            return $filePath;
-        } else {
-            throw new TmacException ( '找不到' . APP_NAME . '核心包中的Plugin文件:' . $filePath );
-        }
-    }
+    
 
     /**
      * 获取File缓存实例
@@ -318,7 +200,7 @@ class App
      */
     public final function tmacException( $e )
     {
-        if ( $e instanceof Exception ) {
+        if ( $e instanceof TmacException ) {
             $e->getError();
         } else {
             echo "Error code: " . $e->getCode() . '<br>';

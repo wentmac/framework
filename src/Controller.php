@@ -18,15 +18,7 @@ class Controller
 {
     use DITrait;
 
-    /**
-     * URL参数
-     *
-     * @var array
-     */
-    private $param;
-    private $url;
-    private $config;
-
+    protected $tVar = []; // 模板输出变量
 
     /**
      * 构造函数.
@@ -35,173 +27,132 @@ class Controller
      * @access public
      *
      */
-    public function __construct( ConfigInterface $config )
+    public function __construct()
     {
-        $this->config = $config;
+
     }
 
     public function init()
     {
-        $this->parsePath();
-        $this->initControllerMethod( $this->initController() );
     }
 
     /**
-     * 解析URL路径
-     *
-     * @return void
-     * @access private
-     *
+     * 模板变量赋值
+     * @access protected
+     * @param mixed $name
+     * @param mixed $value
      */
-    private function parsePath()
+    public function assign( $name, $value = '' )
     {
-        if ( $this->config[ 'app.url_case_insensitive' ] ) {
-            // URL地址中M不区分大小写
-            if ( !empty( $_GET[ 'M' ] ) && empty( $_GET[ 'm' ] ) )
-                $_GET[ 'm' ] = strtolower( $_GET[ 'M' ] );
-        }
-        //确定Controller以及Action
-        if ( empty( $_GET[ 'm' ] ) ) {
-            //如果没有参数任何参数
-            $this->param[ 'TMAC_CONTROLLER_FILE' ] = 'IndexController';
-            $this->param[ 'TMAC_CONTROLLER' ] = '';
-            $this->param[ 'TMAC_ACTION' ] = 'index';
-            return true;
-        }
-        $queryString = $_GET[ 'm' ];
-        unset( $_GET[ 'm' ] );
-        $action = '';
-        if ( ( $urlSeparatorPosition = strrpos( $queryString, $this->config[ 'app.url_separator' ] ) ) > 0 ) {//如果query_string中有url separator就来取controller和method
-            $controller = substr( $queryString, 0, $urlSeparatorPosition );
-            $action = substr( $queryString, $urlSeparatorPosition + 1 );
+        if ( is_array( $name ) ) {
+            $this->tVar = array_merge( $this->tVar, $name );
+        } elseif ( is_object( $name ) ) {
+            foreach ( $name as $key => $val )
+                $this->tVar[ $key ] = $val;
         } else {
-            $controller = $queryString;
+            $this->tVar[ $name ] = $value;
         }
-        //Controller的第一个字符必须为字母
-        if ( $this->isLetter( $controller ) === false ) {
-            $message = "错误的Controller请求";
-            $message .= $this->config[ 'app.debug' ] ? ": [{$controller}]" : "";
-            throw new TmacException( $message );
-        }
-        if ( empty( $action ) )
-            $action = 'index';
-
-        $tmac_controller = basename( $controller );
-        if ( $tmac_controller === $controller ) {
-            //没有二级目录的控制器，默认都在Conttroller目录下的控制器
-            $tmac_controller_file = '';
-        } else {
-            //如果子目录的控制器  比如 src/Module/web/Controller/user/IndexController.php，取出目录结构
-            $tmac_controller_file = $this->getControllerFilePath( $controller );
-        }
-
-        $this->param[ 'TMAC_CONTROLLER' ] = ucfirst( $tmac_controller ) . 'Controller';
-        $this->param[ 'TMAC_CONTROLLER_FILE' ] = $tmac_controller_file;
-        $this->param[ 'TMAC_ACTION' ] = $action;
-        return true;
     }
 
     /**
-     * user/ return user\
-     * user/bill/ return user\bill\
-     * @param $controller
-     * @return string|string[]
-     */
-    private function getControllerFilePath( $controller )
-    {
-        $urlSeparatorPosition = strrpos( $controller, '/' );
-        $controller = substr( $controller, 0, $urlSeparatorPosition + 1 );
-        return str_replace( '/', '\\', $controller );
-    }
-
-    /**
-     * 根据解析的URL获取Controller文件
-     *
+     * 显示前台模板
+     * @param string $tpl 模板文件名 为空时是 CONTROLLER_ACTION
+     * @access public
      * @return void
-     * @access private
-     *
      */
-    private function initController()
+    public final function V( $tpl = null )
     {
-        $class_name = ucfirst( APP_NAME ) . '\Controller\\' . $this->param[ 'TMAC_CONTROLLER_FILE' ] . $this->param[ 'TMAC_CONTROLLER' ];
-        try {
-            $controller_object = $this->container->get( $class_name );
-        } catch ( ClassNotFoundException $e ) {
-            $message = "错误的请求，找不到Controller文件";
-            if ( $this->config[ 'app.debug' ] ) {
-                $message .= "[ $class_name ]";
-                $message .= $e->getMessage();
-            }
-            throw new TmacException( $message );
-        }
-        return $controller_object;
+        //设置模板中的全局变量|前台模板目录
+        $array = array(
+            'STATIC_URL' => $this->container->config[ 'app.template.static_url' ],
+            'STATIC_COMMON_URL' => $this->container->config[ 'app.template.static_url' ] . 'common/',
+            'STATIC_APP_URL' => $this->container->config[ 'app.template.static_url' ] . $this->container->config[ 'app.template.template_dir' ] . '/',
+        );
+        $this->assign( $array );
+        $tpl = $this->container->config[ 'app.template.template_dir' ] . DIRECTORY_SEPARATOR . $tpl;
+        return $this->view( $tpl, $this->tVar );
     }
 
-    /**
-     * 初始化执行init()
-     * @param object $controller_object
-     * @param ReflectionClass $reflector
-     * @return bool
-     */
-    private function initControllerInitMethod( object $controller_object, ReflectionClass $reflector )
-    {
-        $init_method = '_init';
 
-        if ( $reflector->hasMethod( $init_method ) === false ) {
-            return true;
+    /**
+     * @param string|null $view
+     * @param array|null $tVar
+     */
+    protected function view( string $view = null, array $tVar = null )
+    {
+        $template_app_name = empty( APP_NAME ) ? 'index' : APP_NAME;
+        $options = array(
+            'template_dir' => $this->container->app->getWebTemplatePath() . $this->container->config[ 'app.template.template' ], //设置系统模板文件的存放目录
+            'cache_dir' => $this->container->app->getVarPath() . $this->container->config[ 'app.template.cache_dir' ] . DIRECTORY_SEPARATOR . $template_app_name . DIRECTORY_SEPARATOR, //指定缓存文件存放目录
+            'auto_update' => $this->container->config[ 'app.template.auto_update' ], //当模板文件有改动时重新生成缓存 [关闭该项会快一些]
+            'cache_lifetime' => $this->container->config[ 'app.template.cache_lifetime' ], //缓存生命周期(分钟)，为 0 表示永久 [设置为 0 会快一些]
+            'suffix' => $this->container->config[ 'app.template.suffix' ], //模板后缀
+            'cache_open' => $this->container->config[ 'app.template.cache_open' ], //是否开启缓存，程序调试时使用
+            'value' => $tVar    //压到模板里的变量数据
+        );
+        $tmac_template_update_cache = $this->container->request->getQuery( 'tmac_template_update_cache', 0 );
+        if ( $tmac_template_update_cache ) {
+            $options[ 'auto_update' ] = true;//当模板文件有改动时重新生成缓存（适用于关闭主动更新时用于手动更新模板缓存）
         }
-        $method = $reflector->getMethod( $init_method );
-        if ( $method->isPublic() === FALSE ) {
-            return true;
+        $tpl = $this->container->template;
+        $tpl->setOptions( $options ); //设置模板参数
+        //如果是前台的模板就不用前缀（模板目录名）
+        if ( $view == $this->container->config[ 'app.template.template_dir' ] . DIRECTORY_SEPARATOR ) {
+            //如果模板路径，文件名为空的话就尝试把TMAC_CONTROLLER_FILE当作模板路径，文件名
+            $view_new = strtolower( $this->container->request->getQuery( 'TMAC_CONTROLLER_FILE' ) . $this->container->request->getQuery( 'TMAC_CONTROLLER_NAME' ) );  //都转成小写的
+            $view = $view . $view_new;  //前面加上模板目录名
         }
-        $args = $this->container->bindParams( $method );
-        $method->invokeArgs( $controller_object, $args );
-        //$method->invoke( $controller_object );
+        $tpl->show( $view );
     }
 
+
     /**
-     * 根据Controller文件名获取Controller类名并且执行
-     *
+     * 显示原生前台模板
+     * 主要是用来配置$this->assign();变量赋值使
+     * @param string $tpl 模板文件名 为空时是 CONTROLLER_ACTION
+     * @access public
      * @return void
-     * @access private
-     *
      */
-    private function initControllerMethod( object $controller_object )
+    public function view_php( $view )
     {
-        $reflector = new ReflectionClass( $controller_object );
-        $controller_method = $this->param[ 'TMAC_ACTION' ] . 'Action';
+        //设置模板中的全局变量|前台模板目录
+        $array = array(
+            'STATIC_URL' => $this->container->config[ 'app.template.static_url' ],
+            'STATIC_COMMON_URL' => $this->container->config[ 'app.template.static_url' ] . 'common/',
+            'STATIC_APP_URL' => $this->container->config[ 'app.template.static_url' ] . $this->container->config[ 'app.template.template_dir' ] . '/',
+        );
+        $this->assign( $array );
+        $this->display( $view, $this->tVar );
+    }
 
-        if ( $reflector->hasMethod( $controller_method ) === false ) {
-            $message = "错误的请求，找不到Action";
-            $message .= $this->config[ 'app.debug' ] ? ":[{$this->param['TMAC_ACTION']}]" : "";
-            throw new TmacException( $message );
+
+    /**
+     * 原生PHP输出模板
+     * @param string $view 模板路径以及文件名 可以用.作为目录分割
+     */
+    public final function display( $view, $tVar = null )
+    {
+        $file = $this->container->app->getWebTemplatePath() . $this->container->config[ 'app.template.template' ]
+            . DIRECTORY_SEPARATOR . $this->container->config[ 'app.template.template_dir' ]
+            . DIRECTORY_SEPARATOR . $view
+            . $this->container->config[ 'app.template.suffix' ];
+        if ( !empty ( $tVar ) ) {
+            extract( $tVar, EXTR_OVERWRITE );
         }
-
-        $method = $reflector->getMethod( $controller_method );
-        $args = $this->container->bindParams( $method );
-
-        if ( $method->isPublic() === FALSE ) {
-            $message = "Action为私有方法";
-            $message .= $this->config[ 'app.debug' ] ? ":[{$this->param['TMAC_ACTION']}]" : "";
-            throw new TmacException( $message );
-        }
-        //执行init方法
-        $this->initControllerInitMethod( $controller_object, $reflector );
-        //执行action方法
-        $method->invokeArgs( $controller_object, $args );
-        //$method->invoke( $controller_object );
+        include $file;
     }
 
     /**
-     * 判断第一个字符是否为字母
-     *
-     * @param string $char
-     * @return boolean
+     * 在原生PHP模板中include其他模板
+     * include Tmac::loadView ( 'inc/header' );
+     * @param type $view
      */
-    private function isLetter( $char )
+    public final function loadView( $view )
     {
-        $ascii = ord( $char{0} );
-        return ( $ascii >= 65 && $ascii <= 90 ) || ( $ascii >= 97 && $ascii <= 122 );
+        $file = $this->container->app->getWebTemplatePath() . $this->container->config[ 'app.template.template' ]
+            . DIRECTORY_SEPARATOR . $this->container->config[ 'app.template.template_dir' ]
+            . DIRECTORY_SEPARATOR . $view
+            . $this->container->config[ 'app.template.suffix' ];
+        return $file;
     }
-
 }

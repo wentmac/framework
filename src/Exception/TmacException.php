@@ -41,19 +41,19 @@ class TmacException extends Exception
      */
     public function getError()
     {
-        $index_url = $_SERVER[ 'app_host' ];
-        $url = $_SERVER[ 'app_host' ] . $_SERVER[ 'REQUEST_URI' ];
-        if ( $_SERVER[ 'app_debug' ] ) {
+        $index_url = env( 'app.host', $_SERVER[ 'SERVER_NAME' ] );
+        $url = $index_url . $_SERVER[ 'REQUEST_URI' ];
+        if ( env( 'app_debug' ) ) {
             $trace = $this->getTrace();
             $this->class = $trace[ 0 ][ 'class' ];
             $this->function = $trace[ 0 ][ 'function' ];
             $this->line = $trace[ 0 ][ 'line' ];
             $traceInfo = '';
-            $time = date( "Y-m-d H:i:m" );
+            $time = date( "Y-m-d H:i:s" );
             foreach ( $trace as $t ) {
-                $traceInfo .= '[' . $time . '] ' . $t[ 'file' ] . ' (' . $t[ 'line' ] . ') ';
+                $traceInfo .= '[' . $time . '] ' . isset( $t[ 'file' ] ) ?? $t[ 'file' ] . ' (' . $t[ 'line' ] . ') ';
                 $traceInfo .= $t[ 'class' ] . $t[ 'type' ] . $t[ 'function' ] . '(';
-                $traceInfo .= implode( ', ', $t[ 'args' ] );
+                //$traceInfo .= implode( ', ', $t[ 'args' ] );
                 $traceInfo .= ")<br/>";
             }
             die( sprintf( $this->html, $url, $index_url, urldecode( $this->getMessage() ), '在[' . $this->getFile() . ']的第[' . $this->getLine() . ']行. ', $traceInfo ) );
