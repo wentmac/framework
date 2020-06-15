@@ -179,7 +179,6 @@ class Route
             $message .= $this->config[ 'app.debug' ] ? ":[{$this->param['TMAC_ACTION']}]" : "";
             throw new TmacException( $message );
         }
-
         $method = $reflector->getMethod( $controller_method );
         $args = $this->container->bindParams( $method );
 

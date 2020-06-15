@@ -193,7 +193,12 @@ class Container implements ArrayAccess, ContainerInterface
             $this->setBindShared( $concrete[ 'class' ], $shared_status );
             $this->_bind[ $concrete[ 'class' ] ] = $concrete;
         } else {
+            //var_dump($abstract.'='.$concrete.'='.$shared_status);
+            //字符串类型的服务别名绑定 比如 $container->setShared('config',Tmac\Config::class);
+            //绑定服务别名的服务共享状态 exemple:'config','request'
             $this->setBindShared( $abstract, $shared_status );
+            //绑定服务真实类名 example:Tmac\Config::class Tmac\Request::class
+            $this->setBindShared( $concrete, $shared_status );
         }
         $this->_bind[ $abstract ] = $concrete;
         return $this;
@@ -211,6 +216,7 @@ class Container implements ArrayAccess, ContainerInterface
         $abstract_name = $abstract;
         !isset( $this->_bind_shared[ $abstract_name ] ) && $this->_bind_shared[ $abstract_name ] = $shared_status;
     }
+
 
     /**
      * 取得容器中 依赖关系名称 绑定的共享状态。
@@ -240,11 +246,14 @@ class Container implements ArrayAccess, ContainerInterface
          * 实际上，这个服务不再需要初始化，因为它已经是一个对象，可以说，这不是一个真正的依赖注入，
          * 但是如果你想强制总是返回相同的对象/值，使用这种方式还是有用的:
          */
-        if ( is_object( $this->_bind[ $abstract ] ) ) {
+        $abstract_name = $this->_bind[ $abstract ];
+        //返回直接声明对象的，排除匿名函数回调
+        if ( is_object( $abstract_name ) && ( $abstract_name instanceof Closure ) === false ) {
             return true;
         }
         //setShared和set方法中是否初始绑定了共享服务
-        if ( isset( $this->_bind_shared[ $abstract ] ) && $this->_bind_shared[ $abstract ] === true ) {
+        $abstract_bind_shared = $this->_bind_shared[ $abstract ];
+        if ( isset( $abstract_bind_shared ) && $abstract_bind_shared === true ) {
             return true;
         }
         return false;
@@ -289,7 +298,7 @@ class Container implements ArrayAccess, ContainerInterface
     /**
      * 获取目标实例
      *
-     * @param string $abstract
+     * @param string $abstract_alias_name 原始绑定需要调用的别名
      * 构造函数参数值列表，参数应按顺序提供
      * @param array $params a list of constructor parameter values. The parameters should be provided in the order
      * they appear in the constructor declaration. If you want to skip some parameters, you should index the remaining
@@ -301,15 +310,14 @@ class Container implements ArrayAccess, ContainerInterface
      * @return mixed|object
      * @throws Exception
      */
-    public function get( $abstract, array $params = [], array $properties = [] )
+    public function get( $abstract_alias_name, array $params = [], array $properties = [] )
     {
         //取得容器中 依赖关系名称 绑定的共享状态。如果找到依赖关系名称有别名，并且未绑定过，就绑定设置别名相相同的共享状态
         //解决了依赖关系名称与别名服务共享状态保持一致问题。
-        $abstract_shared_status = $this->getBindShared( $abstract );
-        $abstract = $this->getAlias( $abstract );
+        $abstract_shared_status = $this->getBindShared( $abstract_alias_name );
+        $abstract = $this->getAlias( $abstract_alias_name );
         // 如果容器中不存在则注册到容器
         if ( !isset( $this->_bind[ $abstract ] ) ) {
-            var_dump($abstract).'--'.var_dump($abstract_shared_status);
             $this->bind( $abstract, null, $abstract_shared_status );
         }
         $check_bind_shared = $this->isShared( $abstract );
@@ -389,6 +397,7 @@ class Container implements ArrayAccess, ContainerInterface
         }
         return $this->get( $abstract, $params, $properties );
     }
+
 
     /**
      * 解决依赖

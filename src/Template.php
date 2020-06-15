@@ -145,7 +145,7 @@ class Template
      * @param string $file 模板文件名称
      * @return string
      */
-    public function getfile( $file )
+    public function getFile( $file )
     {
         $file = $file . $this->_options[ 'suffix' ];   //设置模板文件后缀
         $cachefile = $this->_getCacheFile( $file );
@@ -164,7 +164,7 @@ class Template
      */
     public function show( $file )
     {
-        $file = $this->getfile( $file );
+        $file = $this->getFile( $file );
         if ( is_file( $file ) ) {
             // 模板阵列变量分解成为独立变量
             extract( $this->_options[ 'value' ], EXTR_OVERWRITE );
@@ -447,7 +447,7 @@ class Template
      */
     public function loadtemplate( $file )
     {
-        $tplfile = $this->_options[ 'template_dir' ] . DIRECTORY_SEPARATOR . $GLOBALS[ 'TmacConfig' ][ 'Template' ][ 'template_dir' ] . DIRECTORY_SEPARATOR . $file . $this->_options[ 'suffix' ];
+        $tplfile = $this->_options[ 'template_dir' ] . DIRECTORY_SEPARATOR . $this->_options[ 'template_dir' ] . DIRECTORY_SEPARATOR . $file . $this->_options[ 'suffix' ];
         if ( $content = file_get_contents( $tplfile ) ) {
             $this->templates[] = $tplfile;
             return $content;
