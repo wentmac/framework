@@ -66,6 +66,14 @@ class App
     }
 
     /**
+     * @return string
+     */
+    public function getAppPath(): string
+    {
+        return $this->app_path;
+    }
+    
+    /**
      * App constructor.
      * @param string $root_path
      * @param string $web_root

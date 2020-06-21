@@ -46,7 +46,7 @@ class Route
         $_GET = array_merge($_GET, $this->param);
         $this->initControllerMethod( $this->initController() );
     }
-
+    
     /**
      * 解析URL路径
      *
@@ -148,7 +148,7 @@ class Route
      */
     private function initControllerInitMethod( object $controller_object, ReflectionClass $reflector )
     {
-        $init_method = '_init';
+        $init_method = '_initAction';
 
         if ( $reflector->hasMethod( $init_method ) === false ) {
             return true;

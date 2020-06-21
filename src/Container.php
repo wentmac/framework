@@ -442,6 +442,18 @@ class Container implements ArrayAccess, ContainerInterface
         if ( $reflect->hasMethod( 'setDI' ) ) {
             $object->setDI( $this );
         }
+        $init_method = '_init';
+        if ( $reflect->hasMethod( $init_method ) === false ) {
+            return true;
+        }
+        $method = $reflect->getMethod( $init_method );
+        if ( $method->isPublic() === FALSE ) {
+            return true;
+        }
+        $args = $this->bindParams( $method );
+        $method->invokeArgs( $object, $args );
+        //$method->invoke( $object );
+
     }
 
     /**

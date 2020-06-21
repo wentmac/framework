@@ -5,38 +5,101 @@
  *  $Author: zhangwentao $
  *  $Id: DbMySQLi.class.php 651 2016-11-17 11:29:22Z zhangwentao $
  */
+
 namespace Tmac\Database;
-class DbMySQLiDatabase extends AbstractDatabase
+
+use Tmac\Cache\DriverCache;
+use Tmac\Contract\ConfigInterface;
+use Tmac\Debug;
+
+class MysqliDatabase extends AbstractDatabase
 {
 
     /**
      * 初始化
-     *
-     * @global array $TmacConfig
      */
-    public function __construct( $config )
+    public function __construct( ConfigInterface $config, Debug $debug, DriverCache $cache )
     {
-        $this->config = $config;
-        //连接数据库
-        $this->link = $this->connect();
-        if ( $this->link ) {
-            //设置编码与sql_mode
-            mysqli_query( $this->link, "SET NAMES '{$this->config[ 'char_set' ]}', sql_mode=''" );
-        } else {
-            throw new TmacException( '无法连接到数据库:' . $this->getError() );
-        }
+        parent::__construct( $config, $debug, $cache );
     }
+
+    /**
+     * 初始化数据库连接
+     * @param bool $master 是否主服务器
+     */
+    public function initConnect( bool $master = true )
+    {
+        $config = $this->config[ 'database.mysql' ];
+        if ( $config[ 'deploy' ] ) {
+            if ( $master ) {
+                if ( !$this->linkWrite ) {
+                    $this->linkWrite = $this->connectMulti( true );
+                }
+                $this->linkID = $this->linkWrite;
+            } else {
+                if ( !$this->linkRead ) {
+                    $this->linkRead = $this->connectMulti( false );
+                }
+                $this->linkID = $this->linkRead;
+            }
+        } else {
+            //连接数据库
+            $this->linkID = $this->connect( $this->config[ 'database.mysql' ] );
+        }
+
+        if ( $this->linkID ) {
+            //设置编码与sql_mode
+            mysqli_query( $this->linkID, "SET NAMES '{$this->config[ 'database.mysql.charset' ]}', sql_mode=''" );
+        } else {
+            throw new TmacException( '无法连接到read数据库:' . $this->getError() );
+        }
+
+    }
+
 
     /**
      * 连接数据库
      *
+     * @return bool
      * @global array $TmacConfig
+     */
+    public function connect( $config )
+    {
+        $fun = $config[ 'pconnect' ] ? 'mysqli_pconnect' : 'mysqli_connect';
+        return $fun( $config[ 'hostname' ], $config[ 'username' ], $config[ 'password' ], $config[ 'database' ], $config[ 'port' ] );
+    }
+
+
+    /**
+     * 连接主/从库
      * @return bool
      */
-    public function connect()
+    public function connectMulti( bool $master = false )
     {
-        $fun = $this->config[ 'pconnect' ] ? 'mysqli_pconnect' : 'mysqli_connect';
-        return $fun( $this->config[ 'hostname' ], $this->config[ 'username' ], $this->config[ 'password' ], $this->config[ 'database' ], $this->config[ 'port' ] );
+        $config = $this->config[ 'database.mysql' ];
+        if ( !$config[ 'deploy' ] ) {
+            //没有配置分布式（主从，读写分离）
+            return true;
+        }
+
+        if ( $master ) {
+            $deploy_config = $config[ 'write' ];
+        } else {
+            $deploy_config = $config[ 'read' ];
+        }
+
+        if ( empty( $deploy_config ) ) {
+            return true;
+        }
+        // 如果数组即多个读库，那么通过随机函数array_rand()挑一个，默认取第一个
+        if ( isset( $deploy_config ) && is_array( $deploy_config ) ) {
+            $config_choose = count( $deploy_config ) > 1
+                ? array_rand( $deploy_config )
+                : $deploy_config[ 0 ];
+            $config = array_merge( $config, $config_choose );
+        }
+        //连接数据库
+        return $this->connect( $config );
     }
 
     /**
@@ -47,7 +110,7 @@ class DbMySQLiDatabase extends AbstractDatabase
      */
     public function selectDatabase( $database )
     {
-        return mysqli_select_db( $database, $this->link );
+        return mysqli_select_db( $database, $this->linkID );
     }
 
     /**
@@ -57,10 +120,13 @@ class DbMySQLiDatabase extends AbstractDatabase
      */
     public function query( $sql )
     {
-        $rs = mysqli_query( $this->link, $sql );
+        //判断如果有手动设置读主库，默认是读从库
+        $master = isset( $this->readMaster ) ? $this->readMaster : false;
+        $this->initConnect( $master );
+        $rs = mysqli_query( $this->linkID, $sql );
         if ( $rs ) {
             $this->queryNum++;
-            $this->numRows = mysqli_affected_rows( $this->link );
+            $this->numRows = mysqli_affected_rows( $this->linkID );
             $this->debug( $sql );
             return $rs;
         } else {
@@ -77,10 +143,21 @@ class DbMySQLiDatabase extends AbstractDatabase
      */
     public function execute( $sql )
     {
-        if ( mysqli_query( $this->link, $sql ) ) {
+        //判断如果有手动设置读主库，默认是读从库
+        $master = true;
+        $this->initConnect( $master );
+
+        //如果设置了主从分离 并且 配置开启了read_master参数，并且执行了写入操作，则后续该表所有的查询都会连接主服务器
+        if ( !empty( $this->config[ 'database.mysql.deploy' ] ) && !empty( $this->config[ 'database.mysql.read_master' ] ) ) {
+            $this->readMaster = true;
+        }
+
+        if ( mysqli_query( $this->linkID, $sql ) ) {
             $this->queryNum++;
-            $this->numRows = mysqli_affected_rows( $this->link );
+            $this->numRows = mysqli_affected_rows( $this->linkID );
             $this->debug( $sql );
+
+            //todo 清理缓存
             return true;
         } else {
             $this->debug( $sql, false, $this->getError() );
@@ -126,7 +203,7 @@ class DbMySQLiDatabase extends AbstractDatabase
      */
     public function startTrans()
     {
-        if ( !$this->link ) {
+        if ( !$this->linkID ) {
             return false;
         }
         ++$this->trans_level;
@@ -173,14 +250,14 @@ class DbMySQLiDatabase extends AbstractDatabase
      * 执行INSERT命令.返回AUTO_INCREMENT
      * 返回0为没有插入成功
      *
-     * @param string $sql  SQL语句
+     * @param string $sql SQL语句
      * @access public
      * @return integer
      */
     public function insert( $sql )
     {
         $this->execute( $sql );
-        return mysqli_insert_id( $this->link );
+        return mysqli_insert_id( $this->linkID );
     }
 
     /**
@@ -203,7 +280,7 @@ class DbMySQLiDatabase extends AbstractDatabase
      */
     public function close()
     {
-        return mysqli_close( $this->link );
+        return mysqli_close( $this->linkID );
     }
 
     /**
@@ -214,7 +291,7 @@ class DbMySQLiDatabase extends AbstractDatabase
      */
     public function getError()
     {
-        return mysqli_errno( $this->link ) . " : " . mysqli_error( $this->link );
+        return mysqli_errno( $this->linkID ) . " : " . mysqli_error( $this->linkID );
     }
 
     /**
@@ -222,7 +299,7 @@ class DbMySQLiDatabase extends AbstractDatabase
      */
     public function __destruct()
     {
-        is_resource( $this->link ) && self::close();
+        is_resource( $this->linkID ) && self::close();
     }
 
 }

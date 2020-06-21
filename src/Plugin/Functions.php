@@ -8,15 +8,21 @@
  * $Id: Functions.class.php 325 2016-05-31 10:07:35Z zhangwentao $
  * http://www.t-mac.org；
  */
+
 namespace Tmac\Plugin;
+
 class Functions
 {
+
+    public function __construct()
+    {
+    }
 
     /**
      * 获取客户端IP地址
      * @return <type>
      */
-    public static function get_client_ip()
+    public function get_client_ip()
     {
         $ip = $_SERVER[ 'REMOTE_ADDR' ];
         if ( getenv( 'HTTP_CLIENT_IP' ) && strcasecmp( getenv( 'HTTP_CLIENT_IP' ), 'unknown' ) ) {
@@ -32,22 +38,22 @@ class Functions
     }
 
     /**
-      +----------------------------------------------------------
+     * +----------------------------------------------------------
      * 字符串截取，支持中文和其他编码
-      +----------------------------------------------------------
+     * +----------------------------------------------------------
      * @static
      * @access public
-      +----------------------------------------------------------
+     * +----------------------------------------------------------
      * @param string $str 需要转换的字符串
      * @param string $length 截取长度
      * @param string $start 开始位置
      * @param string $charset 编码格式
      * @param string $suffix 截断显示字符
-      +----------------------------------------------------------
+     * +----------------------------------------------------------
      * @return string
-      +----------------------------------------------------------
+     * +----------------------------------------------------------
      */
-    public static function msubstr( $str, $length, $start = 0, $charset = "utf-8", $suffix = true )
+    public function msubstr( $str, $length, $start = 0, $charset = "utf-8", $suffix = true )
     {
         if ( function_exists( "mb_substr" ) )
             return mb_substr( $str, $start, $length, $charset );
@@ -72,7 +78,7 @@ class Functions
      * 编码默认为 utf-8
      * 开始长度默认为 0
      */
-    public static function cut_str( $string, $sublen, $start = 0, $code = 'UTF-8' )
+    public function cutStr( $string, $sublen, $start = 0, $code = 'UTF-8' )
     {
         if ( $code == 'UTF-8' ) {
             $pa = "/[\x01-\x7f]|[\xc2-\xdf][\x80-\xbf]|\xe0[\xa0-\xbf][\x80-\xbf]|[\xe1-\xef][\x80-\xbf][\x80-\xbf]|\xf0[\x90-\xbf][\x80-\xbf][\x80-\xbf]|[\xf1-\xf7][\x80-\xbf][\x80-\xbf][\x80-\xbf]/";
@@ -81,32 +87,31 @@ class Functions
             if ( count( $t_string[ 0 ] ) - $start > $sublen )
                 return join( '', array_slice( $t_string[ 0 ], $start, $sublen ) ) . "...";
             return join( '', array_slice( $t_string[ 0 ], $start, $sublen ) );
-        }
-        else {
+        } else {
             $start = $start * 2;
             $sublen = $sublen * 2;
             $strlen = strlen( $string );
             $tmpstr = '';
 
             for ( $i = 0; $i < $strlen; $i++ ) {
-                if ( $i >= $start && $i < ($start + $sublen) ) {
+                if ( $i >= $start && $i < ( $start + $sublen ) ) {
                     if ( ord( substr( $string, $i, 1 ) ) > 129 ) {
-                        $tmpstr.= substr( $string, $i, 2 );
+                        $tmpstr .= substr( $string, $i, 2 );
                     } else {
-                        $tmpstr.= substr( $string, $i, 1 );
+                        $tmpstr .= substr( $string, $i, 1 );
                     }
                 }
                 if ( ord( substr( $string, $i, 1 ) ) > 129 )
                     $i++;
             }
             if ( strlen( $tmpstr ) < $strlen )
-                $tmpstr.= "...";
+                $tmpstr .= "...";
             return $tmpstr;
         }
     }
 
     //GB转UTF-8编码
-    public static function gb2utf8( $gbstr )
+    public function gb2utf8( $gbstr )
     {
         if ( function_exists( 'iconv' ) ) {
             return iconv( 'gbk', 'utf-8//ignore', $gbstr );
@@ -143,12 +148,12 @@ class Functions
         return $ret;
     }
 
-    static function GetHttps( $url, $charset = "utf-8" )
+    public function GetHttps( $url, $charset = "utf-8" )
     {
         if ( extension_loaded( 'curl' ) ) {
             $file_contents = self::curl_file_get_contents( $url );
         } else {
-            $file_contents = @file_get_contents( $url );
+            $file_contents = file_get_contents( $url );
         }
         if ( $charset == "utf-8" ) {
             return $file_contents;
@@ -163,9 +168,9 @@ class Functions
      * @param type $url
      * @param type $timeout
      * @param type $ssl
-     * @return type 
+     * @return type
      */
-    public static function curl_file_get_contents( $url, $timeout = 5, $ssl = false )
+    public function curl_file_get_contents( $url, $timeout = 5, $ssl = false )
     {
         $ch = curl_init();
         curl_setopt( $ch, CURLOPT_URL, $url );
@@ -185,9 +190,9 @@ class Functions
      * @param type $url
      * @param type $postField
      * @param type $timeout
-     * @return type 
+     * @return type
      */
-    public static function curl_post_contents( $url, $postField, $timeout = 30, $ssl = false )
+    public function curl_post_contents( $url, $postField, $timeout = 30, $ssl = false )
     {
         $ch = curl_init();
         curl_setopt( $ch, CURLOPT_URL, $url );
@@ -207,28 +212,28 @@ class Functions
     }
 
     // 循环创建目录创建目录 递归创建多级目录
-    public static function CreateFolder( $dir, $mode = 0777 )
+    public function createFolder( $dir, $mode = 0777 )
     {
-        if ( is_dir( $dir ) || @mkdir( $dir, $mode ) )
+        if ( is_dir( $dir ) || mkdir( $dir, $mode, true ) ) {
             return true;
-        if ( !self::CreateFolder( dirname( $dir ), $mode ) )
+        } else {
             return false;
-        return @mkdir( $dir, $mode );
+        }
     }
 
     /**
      * 删除非空文件夹
-     * @param $dir;
+     * @param $dir ;
      * return
      */
     public static function deldir( $dir )
     {
         $dh = opendir( $dir );
-        while ( ($file = readdir( $dh )) !== false ) {
+        while ( ( $file = readdir( $dh ) ) !== false ) {
             if ( $file != '.' && $file != '..' && $file != '.svn' ) {
                 is_dir( $dir . DIRECTORY_SEPARATOR . $file ) ?
-                                self::delDir( $dir . DIRECTORY_SEPARATOR . $file ) :
-                                unlink( $dir . DIRECTORY_SEPARATOR . $file );
+                    self::delDir( $dir . DIRECTORY_SEPARATOR . $file ) :
+                    unlink( $dir . DIRECTORY_SEPARATOR . $file );
             }
         }
         if ( readdir( $dh ) == false ) {
@@ -246,9 +251,9 @@ class Functions
     /**
      * 取16位md5
      * @param type $str
-     * @return type 
+     * @return type
      */
-    public static function md5_16bit( $str )
+    public function md5_16bit( $str )
     {
         return substr( md5( $str ), 8, 16 );
     }
@@ -258,13 +263,13 @@ class Functions
      * @param type $multi_array
      * @param type $sort_key
      * @param type $sort
-     * @return type 
+     * @return type
      */
-    public static function array_sort( $multi_array, $sort_key, $sort = SORT_ASC )
+    public function array_sort( $multi_array, $sort_key, $sort = SORT_ASC )
     {
         $key_array = array();
         if ( is_array( $multi_array ) ) {
-            foreach ( $multi_array AS $k => $v ) {
+            foreach ( $multi_array as $k => $v ) {
                 $key_array[ $k ] = $v[ $sort_key ];
             }
         } else {
@@ -274,11 +279,11 @@ class Functions
         return $multi_array;
     }
 
-    public static function array_object_sort( $multi_array, $sort_key, $sort = SORT_ASC )
+    public function array_object_sort( $multi_array, $sort_key, $sort = SORT_ASC )
     {
         $key_array = array();
         if ( is_array( $multi_array ) ) {
-            foreach ( $multi_array AS $k => $v ) {
+            foreach ( $multi_array as $k => $v ) {
                 $key_array[ $k ] = $v->$sort_key;
             }
         } else {
@@ -292,9 +297,9 @@ class Functions
      * 两个时间戳获取 分钟小时
      * @param type $start_time
      * @param type $end_time
-     * @return boolean 
+     * @return boolean
      */
-    public static function fome_time( $start_time, $end_time )
+    public function fome_time( $start_time, $end_time )
     {
 
         $time = $end_time >= $start_time ? $end_time - $start_time : $start_time - $end_time;
@@ -302,15 +307,15 @@ class Functions
             return $time . '秒钟';
         } else if ( $time < 3600 ) {
 
-            return (int) ($time / 60) . '分钟';
+            return (int) ( $time / 60 ) . '分钟';
         } else if ( $time > 3600 && $time < 86400 ) {
 
-            $minute = (int) (($time % 3600) / 60);
-            return (int) ($time / 3600) . '小时' . $minute . '分钟';
+            $minute = (int) ( ( $time % 3600 ) / 60 );
+            return (int) ( $time / 3600 ) . '小时' . $minute . '分钟';
         } else {
-            $hour = (int) (($time % 86400) / 3600);
-            $minute = (int) ((($time % 86400) % 3600) / 60);
-            return (int) ($time / 86400) . '天' . $hour . '小时' . $minute . '分钟';
+            $hour = (int) ( ( $time % 86400 ) / 3600 );
+            $minute = (int) ( ( ( $time % 86400 ) % 3600 ) / 60 );
+            return (int) ( $time / 86400 ) . '天' . $hour . '小时' . $minute . '分钟';
         }
     }
 

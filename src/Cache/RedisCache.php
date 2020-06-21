@@ -6,13 +6,18 @@
  * $Id: CacheRedis.class.php 507 2016-10-31 18:21:39Z zhangwentao $
  * http://www.t-mac.org；
  */
+
 namespace Tmac\Cache;
-class RedisCache extends AbstractCache
+
+use Tmac\Contract\CacheInterface;
+use Tmac\Contract\ConfigInterface;
+
+class RedisCache implements CacheInterface
 {
 
     /**
      * Memcached实例
-     * 
+     *
      * @var objeact
      * @access private
      */
@@ -39,24 +44,19 @@ class RedisCache extends AbstractCache
     /**
      * 构造器
      * 连接Memcached服务器
-     * 
+     *
      * @global array $TmacConfig
      * @access public
      */
-    public function __construct( $config = '' )
+    public function __construct( array $config = [] )
     {
         if ( !extension_loaded( 'redis' ) ) {
             throw new TmacException( 'redis扩展没有开启!' );
         }
-        if ( !empty( $config ) && empty( $GLOBALS[ 'TmacConfig' ][ 'Cache' ][ 'Redis' ][ $config ] ) ) {
-            throw new TmacException( 'redis配置' . $config . '不存在!' );
-        }
         if ( empty( $config ) ) {
-            $redis_config = $GLOBALS[ 'TmacConfig' ][ 'Cache' ][ 'Redis' ][ 'default' ];
-        } else {
-            $redis_config =  $GLOBALS[ 'TmacConfig' ][ 'Cache' ][ 'Redis' ][ $config ];
+            throw new TmacException( 'redis配置不存在!' );
         }
-        $this->redis_config = $redis_config;        
+        $this->redis_config = $config;
         $timeout = empty( $redis_config[ 'timeout' ] ) ? 0 : $redis_config[ 'timeout' ];
         $this->redis = new Redis();
         if ( isset( $redis_config[ 'persistent' ] ) && $redis_config[ 'persistent' ] ) {
@@ -76,12 +76,12 @@ class RedisCache extends AbstractCache
         if ( !empty( $redis_config[ 'database' ] ) ) {
             $this->redis->select( $redis_config[ 'database' ] );
         }
-        
+
     }
 
     /**
      * 得到 Redis 原始对象可以有更多的操作
-     *     
+     *
      * @return redis object
      */
     public function getRedis()
@@ -90,10 +90,10 @@ class RedisCache extends AbstractCache
     }
 
     /**
-     * 设置值  构建一个字符串 
-     * @param string $key KEY名称 
-     * @param string $value  设置值 
-     * @param int $timeOut 时间  0表示无过期时间 
+     * 设置值  构建一个字符串
+     * @param string $key KEY名称
+     * @param string $value 设置值
+     * @param int $timeOut 时间  0表示无过期时间
      */
     public function set( $key, $value, $timeOut = 0 )
     {
@@ -108,7 +108,7 @@ class RedisCache extends AbstractCache
     /**
      * 获取一个已经缓存的变量
      *
-     * @param String $key  缓存Key
+     * @param String $key 缓存Key
      * @return mixed       缓存内容
      * @access public
      */
@@ -168,8 +168,8 @@ class RedisCache extends AbstractCache
     }
 
     /**
-     * 数据自增 
-     * @param string $key KEY名称 
+     * 数据自增
+     * @param string $key KEY名称
      */
     public function increment( $key )
     {
@@ -177,8 +177,8 @@ class RedisCache extends AbstractCache
     }
 
     /**
-     * 数据自减 
-     * @param string $key KEY名称 
+     * 数据自减
+     * @param string $key KEY名称
      */
     public function decrement( $key )
     {
@@ -188,7 +188,7 @@ class RedisCache extends AbstractCache
     /**
      * 检测是否存在对应的缓存
      *
-     * @param string $key   缓存Key
+     * @param string $key 缓存Key
      * @return boolean      是否存在key
      * @access public
      */

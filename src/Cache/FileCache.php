@@ -6,8 +6,13 @@
  * $Id: CacheFile.class.php 507 2016-10-31 18:21:39Z zhangwentao $
  * http://www.t-mac.org；
  */
+
 namespace Tmac\Cache;
-class FileCache extends AbstractCache
+
+use Tmac\Contract\CacheInterface;
+use Tmac\Contract\ConfigInterface;
+
+class FileCache implements CacheInterface
 {
 
     /**
@@ -19,20 +24,22 @@ class FileCache extends AbstractCache
     private $dir;
     private $md5KeyStatus = true;
     private $time;
+    private $config;
 
     /**
      * 构造器
      *
      * @access public
      */
-    public function __construct($config='')
+    public function __construct( ConfigInterface $config )
     {
+        $this->config = $config;
         $this->dir = VAR_ROOT . 'Cache' . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR;
-        @chmod($this->dir, 0777);
-        if (!is_writable($this->dir)) {
-            throw new TmacException('缓存文件夹' . $this->dir . '不可写！');
+        @chmod( $this->dir, 0777 );
+        if ( !is_writable( $this->dir ) ) {
+            throw new TmacException( '缓存文件夹' . $this->dir . '不可写！' );
         }
-        $this->time = time();
+        $this->time = $this->config[ 'app.now' ];
     }
 
     /**
@@ -40,24 +47,24 @@ class FileCache extends AbstractCache
      * @param type $md5KeyStatus
      * @return FileCache
      */
-    public function setMd5Key($md5KeyStatus)
+    public function setMd5Key( $md5KeyStatus )
     {
         $this->md5KeyStatus = $md5KeyStatus;
         return $this;
     }
 
-    public function filename($name)
+    public function filename( $name )
     {
-        if ($this->md5KeyStatus)
-            $name = md5($name);
-        if ($GLOBALS['TmacConfig']['Cache']['File']['DATA_CACHE_SUBDIR']) {
+        if ( $this->md5KeyStatus )
+            $name = md5( $name );
+        if ( $this->config['class.file.DATA_CACHE_SUBDIR'] ) {
             // 使用子目录
             $dir = '';
-            for ($i = 0; $i < $GLOBALS['TmacConfig']['Cache']['File']['DATA_PATH_LEVEL']; $i++) {
+            for ( $i = 0; $i <$this->config['class.file.DATA_PATH_LEVEL']; $i++ ) {
                 $dir .= $name{$i} . '/';
             }
-            if (!is_dir($this->dir . $dir)) {
-                Functions::CreateFolder($this->dir . $dir);
+            if ( !is_dir( $this->dir . $dir ) ) {
+                mkdir( $this->dir . $dir, '0777', true );
             }
             $filename = $dir . $name . '.cache';
         } else {
@@ -69,18 +76,18 @@ class FileCache extends AbstractCache
     /**
      * 设置一个缓存变量
      *
-     * @param String $key    缓存Key
-     * @param mixed $value   缓存内容
-     * @param int $expire    缓存时间(秒)
+     * @param String $key 缓存Key
+     * @param mixed $value 缓存内容
+     * @param int $expire 缓存时间(秒)
      * @return boolean       是否缓存成功
      * @access public
      * @abstract
      */
-    public function set($key, $value, $expire = 60)
+    public function set( $key, $value, $expire = 60 )
     {
-        $file = $this->filename($key);
-        if (file_put_contents($file, serialize($value), LOCK_EX)) {            
-            touch($file, $this->time + $expire);
+        $file = $this->filename( $key );
+        if ( file_put_contents( $file, serialize( $value ), LOCK_EX ) ) {
+            touch( $file, $this->time + $expire );
             return true;
         } else {
             return false;
@@ -90,18 +97,18 @@ class FileCache extends AbstractCache
     /**
      * 获取一个已经缓存的变量
      *
-     * @param String $key  缓存Key
+     * @param String $key 缓存Key
      * @return mixed       缓存内容
      * @access public
      */
-    public function get($key)
+    public function get( $key )
     {
-        $file = $this->filename($key);
-        if (is_file($file)) {
-            if ($this->time <= filemtime($file)) {
-                return unserialize(file_get_contents($file));
+        $file = $this->filename( $key );
+        if ( is_file( $file ) ) {
+            if ( $this->time <= filemtime( $file ) ) {
+                return unserialize( file_get_contents( $file ) );
             } else {
-                @unlink($file);
+                @unlink( $file );
                 //删除缓存
                 return false;
             }
@@ -118,10 +125,10 @@ class FileCache extends AbstractCache
      * @return boolean       是否删除成功
      * @access public
      */
-    public function del($key)
+    public function del( $key )
     {
-        $file = $this->filename($key);
-        return @unlink($file);
+        $file = $this->filename( $key );
+        return @unlink( $file );
     }
 
     /**
@@ -132,10 +139,10 @@ class FileCache extends AbstractCache
      */
     public function delAll()
     {
-        $files = scandir($this->dir);
-        $files = array_diff($files, array('.', '..'));
-        foreach ($files as $file) {
-            @unlink($file);
+        $files = scandir( $this->dir );
+        $files = array_diff( $files, array( '.', '..' ) );
+        foreach ( $files as $file ) {
+            @unlink( $file );
         }
         return true;
     }
@@ -143,14 +150,14 @@ class FileCache extends AbstractCache
     /**
      * 检测是否存在对应的缓存
      *
-     * @param string $key   缓存Key
+     * @param string $key 缓存Key
      * @return boolean      是否存在key
      * @access public
      */
-    public function has($key)
+    public function has( $key )
     {
-        $file = $this->filename($key);
-        return (is_file($file) === NULL ? false : true);
+        $file = $this->filename( $key );
+        return ( is_file( $file ) === NULL ? false : true );
     }
 
 }

@@ -6,13 +6,18 @@
  * $Id: CacheMemcached.class.php 507 2016-10-31 18:21:39Z zhangwentao $
  * http://www.t-mac.org；
  */
+
 namespace Tmac\Cache;
-class MemcachedCache extends AbstractCache
+
+use Tmac\Contract\CacheInterface;
+use Tmac\Contract\ConfigInterface;
+
+class MemcachedCache implements CacheInterface
 {
 
     /**
      * Memcached实例
-     * 
+     *
      * @var objeact
      * @access private
      */
@@ -26,37 +31,38 @@ class MemcachedCache extends AbstractCache
      */
     private $compression;
 
+    private $config;
+
     /**
      * 构造器
      * 连接Memcached服务器
-     * 
-     * @global array $TmacConfig
+     *
      * @access public
      */
-    public function __construct($config='')
+    public function __construct( ConfigInterface $config )
     {
-        if (!extension_loaded('memcache')) {
-            throw new TmacException('memcached扩展没有开启!');
+        if ( !extension_loaded( 'memcache' ) ) {
+            throw new TmacException( 'memcached扩展没有开启!' );
         }
-        global $TmacConfig;
+        $this->config = $config;
         $this->memcached = new Memcache();
-        $this->memcached->addServer($TmacConfig['Cache']['Memcached']['host'], $TmacConfig['Cache']['Memcached']['port'], $TmacConfig['Cache']['Memcached']['persistent'], $TmacConfig['Cache']['Memcached']['weight'], $TmacConfig['Cache']['Memcached']['timeout']);
-        $this->compression = ($TmacConfig['Cache']['Memcached']['compression'] ? MEMCACHE_COMPRESSED : 0);
+        $this->memcached->addServer( $this->config[ 'cache.memcached.host' ], $this->config[ 'cache.memcached.port' ], $this->config[ 'cache.memcached.persistent' ], $this->config[ 'cache.memcached.weight' ], $this->config[ 'cache.memcached.timeout' ] );
+        $this->compression = ( $this->config[ 'cache.memcached.compression' ] ? MEMCACHE_COMPRESSED : 0 );
     }
 
     /**
      * 设置一个缓存变量
      *
-     * @param String $key    缓存Key
-     * @param mixed $value   缓存内容
-     * @param int $expire    缓存时间(秒)
+     * @param String $key 缓存Key
+     * @param mixed $value 缓存内容
+     * @param int $expire 缓存时间(秒)
      * @return boolean       是否缓存成功
      * @access public
      * @abstract
      */
-    public function set($key, $value, $expire = 60)
+    public function set( $key, $value, $expire = 60 )
     {
-        return $this->memcached->set($key, $value, $this->compression, $expire);
+        return $this->memcached->set( $key, $value, $this->compression, $expire );
     }
 
     /**
@@ -64,23 +70,23 @@ class MemcachedCache extends AbstractCache
      * @param type $key
      * @param type $value
      * @param type $expire
-     * @return type 
+     * @return type
      */
-    public function replace($key, $value, $expire = 60)
+    public function replace( $key, $value, $expire = 60 )
     {
-        return $this->memcached->replace($key, $value, $this->compression, $expire);
+        return $this->memcached->replace( $key, $value, $this->compression, $expire );
     }
 
     /**
      * 获取一个已经缓存的变量
      *
-     * @param String $key  缓存Key
+     * @param String $key 缓存Key
      * @return mixed       缓存内容
      * @access public
      */
-    public function get($key)
+    public function get( $key )
     {
-        return $this->memcached->get($key);
+        return $this->memcached->get( $key );
     }
 
     /**
@@ -90,9 +96,9 @@ class MemcachedCache extends AbstractCache
      * @return boolean       是否删除成功
      * @access public
      */
-    public function del($key)
+    public function del( $key )
     {
-        return $this->memcached->delete($key);
+        return $this->memcached->delete( $key );
     }
 
     /**
@@ -109,13 +115,13 @@ class MemcachedCache extends AbstractCache
     /**
      * 检测是否存在对应的缓存
      *
-     * @param string $key   缓存Key
+     * @param string $key 缓存Key
      * @return boolean      是否存在key
      * @access public
      */
-    public function has($key)
+    public function has( $key )
     {
-        return ($this->get($key) === false ? false : true);
+        return ( $this->get( $key ) === false ? false : true );
     }
 
     /**

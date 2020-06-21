@@ -9,26 +9,29 @@
  *  +-------------------------------------------------------------
  */
 namespace Tmac\Database;
-class DbMsSQLDatabase extends AbstractDatabase
+
+use Tmac\Contract\ConfigInterface;
+use Tmac\Debug;
+use Tmac\Cache;
+
+class MssqlDatabase extends AbstractDatabase
 {
 
     private $errsql;
 
     /**
      * 初始化
-     *
-     * @global array $TmacConfig
      */
-    public function __construct( $config )
+    public function __construct( ConfigInterface $config, Debug $debug, Cache $cache )
     {
-        $this->config = $config;
+        parent::__construct( $config, $debug, $cache );
         //连接数据库
-        $this->link = $this->connect();
-        if ( $this->link ) {
+        $this->linkID = $this->connect();
+        if ( $this->linkID ) {
             //选择数据库
             $this->selectDatabase( $this->config[ 'database' ] );
             //设置编码与sql_mode
-//            mssql_query("SET NAMES '{$this->config['char_set']}', sql_mode=''", $this->link);            
+//            mssql_query("SET NAMES '{$this->config['char_set']}', sql_mode=''", $this->linkID);            
         } else {
             throw new TmacException( '无法连接到数据库:' . $this->getError() );
         }
@@ -56,7 +59,7 @@ class DbMsSQLDatabase extends AbstractDatabase
      */
     public function selectDatabase( $database )
     {
-        return mssql_select_db( $database, $this->link );
+        return mssql_select_db( $database, $this->linkID );
     }
 
     /**
@@ -67,10 +70,10 @@ class DbMsSQLDatabase extends AbstractDatabase
     public function query( $sql )
     {
         $this->errsql = $sql;
-        $rs = mssql_query( $sql, $this->link );
+        $rs = mssql_query( $sql, $this->linkID );
         if ( $rs ) {
             $this->queryNum++;
-            $this->numRows = mssql_rows_affected( $this->link );
+            $this->numRows = mssql_rows_affected( $this->linkID );
             $this->debug( $sql );
             return $rs;
         } else {
@@ -88,9 +91,9 @@ class DbMsSQLDatabase extends AbstractDatabase
     public function execute( $sql )
     {
         $this->errsql = $sql;
-        if ( mssql_query( $sql, $this->link ) ) {
+        if ( mssql_query( $sql, $this->linkID ) ) {
             $this->queryNum++;
-            $this->numRows = mssql_rows_affected( $this->link );
+            $this->numRows = mssql_rows_affected( $this->linkID );
             $this->debug( $sql );
             return true;
         } else {
@@ -137,7 +140,7 @@ class DbMsSQLDatabase extends AbstractDatabase
      */
     public function startTrans()
     {
-        if ( !$this->link ) {
+        if ( !$this->linkID ) {
             return false;
         }        
         ++$this->trans_level;
@@ -206,7 +209,7 @@ class DbMsSQLDatabase extends AbstractDatabase
     public function mssql_insert_id()
     {
         $query = "SELECT @@IDENTITY as last_insert_id";
-        $result = mssql_query( $query, $this->link );
+        $result = mssql_query( $query, $this->linkID );
         list($last_insert_id) = mssql_fetch_row( $result );
         mssql_free_result( $result );
         return $last_insert_id;
@@ -232,7 +235,7 @@ class DbMsSQLDatabase extends AbstractDatabase
      */
     public function close()
     {
-        return mssql_close( $this->link );
+        return mssql_close( $this->linkID );
     }
 
     /**
@@ -292,7 +295,7 @@ class DbMsSQLDatabase extends AbstractDatabase
      */
     public function __destruct()
     {
-        is_resource( $this->link ) && self::close();
+        is_resource( $this->linkID ) && self::close();
     }
 
 }
