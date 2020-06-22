@@ -15,8 +15,19 @@ use Tmac\Exception\TmacException;
 class DriverDatabase
 {
 
+    /**
+     * @var ConfigInterface $config
+     */
     private $config;
+
+    /**
+     * @var Debug $debug
+     */
     private $debug;
+
+    /**
+     * @var DriverCache $cache
+     */
     private $cache;
 
     protected  $instance;

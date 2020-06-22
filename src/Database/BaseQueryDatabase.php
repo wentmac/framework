@@ -67,7 +67,7 @@ class BaseQueryDatabase
         return $this;
     }
 
-    function setCount_field( $count_field )
+    function setCountField( $count_field )
     {
         $this->count_field = $count_field;
         return $this;
@@ -129,12 +129,12 @@ class BaseQueryDatabase
         return $this;
     }
 
-    protected function getprimaryKey()
+    protected function getPrimaryKey()
     {
         return $this->primaryKey;
     }
 
-    protected function setprimaryKey( $primaryKey )
+    protected function setPrimaryKey( $primaryKey )
     {
         $this->primaryKey = $primaryKey;
         return $this;
@@ -151,7 +151,7 @@ class BaseQueryDatabase
         }
         $sql = "SELECT {$this->getField()} "
             . "FROM {$this->getTable()} "
-            . "WHERE {$this->getprimaryKey()}={$this->getPk()}";
+            . "WHERE {$this->getPrimaryKey()}={$this->getPk()}";
         $res = $this->getConn()->getRowObject( $sql );
         return $res;
     }
@@ -235,7 +235,7 @@ class BaseQueryDatabase
 
     /**
      * 通过$where条件取总数
-     * @return type
+     * @return integer
      */
     public function getCountByWhere()
     {
@@ -249,7 +249,7 @@ class BaseQueryDatabase
 
     /**
      * 通过主键更新数据
-     * @param type $entity
+     * @param  $entity
      * @return boolean
      */
     public function updateByPk( $entity )
@@ -257,15 +257,15 @@ class BaseQueryDatabase
         if ( empty( $this->pk ) ) {
             return false;
         }
-        $where = $this->getprimaryKey() . '=' . $this->pk;
-        $rs = $this->getConn()->updateObject( $this->getTable(), $entity, $where, $this->getprimaryKey() );
+        $where = $this->getPrimaryKey() . '=' . $this->pk;
+        $rs = $this->getConn()->updateObject( $this->getTable(), $entity, $where, $this->getPrimaryKey() );
         return $rs;
     }
 
     /**
      * 通过$where条件更新数据
-     * @param type $entity
-     * @return type
+     * @param $entity
+     * @return bool
      */
     public function updateByWhere( $entity )
     {
@@ -275,8 +275,8 @@ class BaseQueryDatabase
 
     /**
      * 插入数据
-     * @param type $entity
-     * @return type
+     * @param $entity
+     * @return int
      */
     public function insert( $entity )
     {
@@ -290,7 +290,7 @@ class BaseQueryDatabase
     public function deleteByPk()
     {
         $sql = "DELETE FROM {$this->getTable()} "
-            . "WHERE {$this->getprimaryKey()}={$this->getPk()}";
+            . "WHERE {$this->getPrimaryKey()}={$this->getPk()}";
         $res = $this->getConn()->execute( $sql );
         return $res;
     }
@@ -309,8 +309,8 @@ class BaseQueryDatabase
 
     /**
      * 取有可能有where in的语句
-     * @param type $field
-     * @param type $value 支持array,int_string,int
+     * @param  $field
+     * @param  $value 支持 array,int_string,int
      * @return type
      */
     public function getWhereInStatement( $field, $value )

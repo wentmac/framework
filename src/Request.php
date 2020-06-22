@@ -86,12 +86,19 @@ class Request
     protected $filter;
 
     /**
+     * 请求类型
+     * @var string
+     */
+    protected $method;
+
+    /**
      * 设置参数并进行过滤
      *
      * @param array $request
      */
     public function __construct( ConfigInterface $config, Filter $filter )
     {
+        $this->header = $this->getHeaders();
         $this->get = $_GET;
         $this->post = $_POST;
         $this->input = file_get_contents( 'php://input' );
@@ -99,8 +106,6 @@ class Request
         $this->request = $_REQUEST;
         $this->cookie = $_COOKIE;
         $this->file = $_FILES ?? [];
-
-        $this->header = $this->getHeaders();
 
         $this->filter = $filter;
         $this->server = $_SERVER;
@@ -151,9 +156,7 @@ class Request
         if ( '' === $name ) {
             return $this->header;
         }
-
         $name = str_replace( '_', '-', strtolower( $name ) );
-
         return $this->header[ $name ] ?? $default;
     }
 
@@ -171,7 +174,6 @@ class Request
         } elseif ( false !== strpos( $contentType, 'json' ) ) {
             return (array) json_decode( $content, true );
         }
-
         return [];
     }
 
@@ -226,7 +228,7 @@ class Request
                     $this->method = 'POST';
                 }
                 unset( $this->post[ $this->var_method ] );
-            } elseif ( $this->server( 'HTTP_X_HTTP_METHOD_OVERRIDE' ) ) {
+            } elseif ( $this->getServer( 'HTTP_X_HTTP_METHOD_OVERRIDE' ) ) {
                 $this->method = strtoupper( $this->server( 'HTTP_X_HTTP_METHOD_OVERRIDE' ) );
             } else {
                 $this->method = $this->getServer( 'REQUEST_METHOD' ) ? : 'GET';
@@ -510,7 +512,7 @@ class Request
 
     public function getContentType()
     {
-        $contentType = $this->getHeader( 'Content-Type' );
+        $contentType = $this->getHeader( 'content-type' );
         if ( $contentType ) {
             if ( strpos( $contentType, ';' ) ) {
                 [ $type ] = explode( ';', $contentType );
