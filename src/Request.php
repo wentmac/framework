@@ -103,6 +103,7 @@ class Request
         $this->header = $this->getHeaders();
 
         $this->filter = $filter;
+        $this->server = $_SERVER;
     }
 
     /**

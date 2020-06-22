@@ -424,7 +424,7 @@ abstract class AbstractDatabase implements DatabaseInterface
         }
 
         if ( $sql ) {
-            return $this->query( $sql );
+            return $this->execute( $sql );
         } else {
             return false;
         }

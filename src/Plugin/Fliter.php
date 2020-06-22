@@ -17,7 +17,7 @@ class Filter
     protected $success = true; //Filter过滤参数的状态
     protected $requiredField = true; //Filter 当前field必选
     protected $failMessage; //最早的一次的失败信息
-    
+
     /**
      * Filter constructor.
      */
@@ -89,8 +89,8 @@ class Filter
 
     /**
      * 是否必选字段方法
-     * @param type $fieldDescription
-     * @return type
+     * @param string $fieldDescription
+     * @return $this
      */
     public function required( $fieldDescription = '' )
     {
