@@ -14,8 +14,8 @@
    $entity_HelpArticle_base->setHelp_description(new TmacDbExpr('NOW()'));
  * UPDATE zu_help_article SET `help_title` = 'abcd20141', `help_description` = NOW(), `help_good_count` = help_good_count-1 WHERE help_article_id=33
  */
-namespace Tmac\Plugin;
-class TmacDbExpr
+namespace Tmac\Database;
+class RawDatabase
 {
 
     /**
