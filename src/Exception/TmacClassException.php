@@ -4,12 +4,14 @@
  * Power By Tmac PHP MVC framework
  * $Author: zhangwentao $  <zwttmac@qq.com>
  * $Id: TmacClassException.class.php 325 2016-05-31 10:07:35Z zhangwentao $
- * http://www.t-mac.org； 
+ * http://www.t-mac.org；
  */
-namespace Tmac\Plugin;
-class TmacClassException extends \Exception
-{
+namespace Tmac\Exception;
 
+use Exception;
+
+class TmacClassException extends Exception
+{
 
     /**
      * 构造器
@@ -18,9 +20,9 @@ class TmacClassException extends \Exception
      * @param int $code
      * @access public
      */
-    public function __construct($message = 'Unknown Error', $code = 0)
+    public function __construct( $message = 'Unknown Error', $code = 0 )
     {
-        parent::__construct($message, $code);
+        parent::__construct( $message, $code );
 
     }
 
