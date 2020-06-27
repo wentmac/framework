@@ -33,7 +33,7 @@ class ApiException extends Exception
         try {
             //放出接口出错时的返回值
             $return = array(
-                'status' => $this->getCode(),
+                'code' => $this->getCode(),
                 'success' => false,
                 'message' => $this->getMessage(),
             );

@@ -66,7 +66,7 @@ class Page
 
     public function __construct($pagenow = '')
     {
-        $this->getCurrentPage($pagenow);
+        $this->setCurrentPage($pagenow);
     }
 
     /**
@@ -93,7 +93,7 @@ class Page
      * 获取当前页数
      *
      */
-    private function getCurrentPage($pagenow)
+    public function setCurrentPage($pagenow)
     {
         if (empty($pagenow)) {
             isset($_GET['page']) ? $page = (int) $_GET['page'] : $page = 1;
@@ -105,7 +105,7 @@ class Page
 
     /**
      * 获取当前页数
-     * 
+     *
      * @return int
      */
     public function getNowPage()
@@ -115,7 +115,7 @@ class Page
 
     /**
      * 获取MySQL分页SQL的LIMIT语句
-     * 
+     *
      * @return string
      */
     public function getSqlLimit($sqlType='')
