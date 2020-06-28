@@ -151,7 +151,7 @@ class Response
     public function apiReturn( $data = array(), $debug = 0, $format = 'json' )
     {
         $return = array(
-            'status' => 0,
+            'code' => 0,
             'success' => true,
             'data' => $data
         );
