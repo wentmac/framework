@@ -10,12 +10,13 @@
  * Description of TmacDbExpr
  *
  * @author Tracy McGrady
- * $entity_HelpArticle_base->setHelp_good_count(new TmacDbExpr('help_good_count-1'));        
-   $entity_HelpArticle_base->setHelp_description(new TmacDbExpr('NOW()'));
+ * $entity_HelpArticle_base->setHelp_good_count(new TmacDbExpr('help_good_count-1'));
+ * $entity_HelpArticle_base->setHelp_description(new TmacDbExpr('NOW()'));
  * UPDATE zu_help_article SET `help_title` = 'abcd20141', `help_description` = NOW(), `help_good_count` = help_good_count-1 WHERE help_article_id=33
  */
+
 namespace Tmac\Database;
-class RawDatabase
+class TmacDbExpr
 {
 
     /**
@@ -31,7 +32,7 @@ class RawDatabase
      *
      * @param string $expression The string containing a SQL expression.
      */
-    public function __construct($expression)
+    public function __construct( $expression )
     {
         $this->_expression = (string) $expression;
     }
