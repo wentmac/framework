@@ -2,7 +2,7 @@
 
 declare (strict_types = 1);
 
-namespace Tmac;
+namespace Tmac\Plugin;
 
 use Tmac\Exception\FileException;
 use Tmac\File;
