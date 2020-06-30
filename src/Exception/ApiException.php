@@ -6,7 +6,7 @@
  * $Id: ApiException.class.php 325 2016-05-31 10:07:35Z zhangwentao $
  * http://www.t-mac.org；
  */
-namespace Tmac\Plugin;
+namespace Tmac\Exception;
 use Exception;
 
 class ApiException extends Exception
