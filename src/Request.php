@@ -10,7 +10,7 @@ namespace Tmac;
 
 use Tmac\Contract\ConfigInterface;
 use Tmac\Plugin\Filter;
-use Tmac\UploadedFile;
+use Tmac\Plugin\UploadedFile;
 
 class Request
 {
