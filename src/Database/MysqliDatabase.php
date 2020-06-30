@@ -11,6 +11,7 @@ namespace Tmac\Database;
 use Tmac\Cache\DriverCache;
 use Tmac\Contract\ConfigInterface;
 use Tmac\Debug;
+use Tmac\Exception\TmacException;
 
 class MysqliDatabase extends AbstractDatabase
 {
