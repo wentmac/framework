@@ -202,7 +202,7 @@ class Route
      */
     private function isLetter( $char )
     {
-        $ascii = ord( $char{0} );
+        $ascii = ord( $char[0] );
         return ( $ascii >= 65 && $ascii <= 90 ) || ( $ascii >= 97 && $ascii <= 122 );
     }
 
