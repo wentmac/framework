@@ -45,10 +45,9 @@ class RedisCache implements CacheInterface
      * 构造器
      * 连接Memcached服务器
      *
-     * @global array $TmacConfig
      * @access public
      */
-    public function __construct( array $config = [] )
+    public function __construct( ConfigInterface $config )
     {
         if ( !extension_loaded( 'redis' ) ) {
             throw new TmacException( 'redis扩展没有开启!' );
@@ -57,24 +56,24 @@ class RedisCache implements CacheInterface
             throw new TmacException( 'redis配置不存在!' );
         }
         $this->redis_config = $config;
-        $timeout = empty( $redis_config[ 'timeout' ] ) ? 0 : $redis_config[ 'timeout' ];
+        $timeout = empty( $config[ 'redis.timeout' ] ) ? 0 : $config[ 'redis.timeout' ];
         $this->redis = new Redis();
-        if ( isset( $redis_config[ 'persistent' ] ) && $redis_config[ 'persistent' ] ) {
-            $this->redis->pconnect( $redis_config[ 'host' ], $redis_config[ 'port' ], $timeout );
+        if ( isset( $config[ 'redis.persistent' ] ) && $config[ 'redis.persistent' ] ) {
+            $this->redis->pconnect( $config[ 'redis.host' ], $config[ 'redis.port' ], $timeout );
         } else {
-            $this->redis->connect( $redis_config[ 'host' ], $redis_config[ 'port' ], $timeout );
+            $this->redis->connect( $config[ 'redis.host' ], $config[ 'redis.port' ], $timeout );
         }
-        if ( !empty( $redis_config[ 'prefix' ] ) ) {
-            $this->redis->setOption( Redis::OPT_PREFIX, $redis_config[ 'prefix' ] );
+        if ( !empty( $config[ 'redis.prefix' ] ) ) {
+            $this->redis->setOption( Redis::OPT_PREFIX, $config[ 'redis.prefix' ] );
         }
-        if ( !empty( $redis_config[ 'read_timeout' ] ) ) {
-            $this->redis->setOption( Redis::OPT_READ_TIMEOUT, $redis_config[ 'read_timeout' ] );
+        if ( !empty( $config[ 'redis.read_timeout' ] ) ) {
+            $this->redis->setOption( Redis::OPT_READ_TIMEOUT, $config[ 'redis.read_timeout' ] );
         }
-        if ( !empty( $redis_config[ 'password' ] ) ) {
-            $this->redis->auth( $redis_config[ 'password' ] );
+        if ( !empty( $config[ 'redis.password' ] ) ) {
+            $this->redis->auth( $config[ 'redis.password' ] );
         }
-        if ( !empty( $redis_config[ 'database' ] ) ) {
-            $this->redis->select( $redis_config[ 'database' ] );
+        if ( !empty( $config[ 'redis.database' ] ) ) {
+            $this->redis->select( $config[ 'redis.database' ] );
         }
 
     }
@@ -202,7 +201,7 @@ class RedisCache implements CacheInterface
      */
     public function __destruct()
     {
-        if ( !isset( $this->redis_config[ 'persistent' ] ) || empty( $this->redis_config[ 'persistent' ] ) ) {
+        if ( !isset( $this->redis_config[ 'redis.persistent' ] ) || empty( $this->redis_config[ 'redis.persistent' ] ) ) {
             $this->redis->close();
         }
     }
