@@ -286,6 +286,9 @@ class Container implements ArrayAccess, ContainerInterface
      * 直接传入实例化的对象
      * $di->set('a3',new A("小唐"));
      * 对于直接注册已经实例化的对象，如上代码中的a3服务，set和setShared效果是一样的。
+     *
+     * 如果一个服务不是注册成“shared”类型，而你又想从DI中获取服务的“shared”实例，你可以使用getShared方法：
+     *
      * @param $class
      * @param null $concrete
      */
