@@ -39,14 +39,14 @@ class UploadedFile extends File
      * @param string|null $name      保存的文件名
      * @return File
      */
-    public function move(string $directory, string $name = null): File
+    public function move(string $directory, string $name = null)
     {
         if ($this->isValid()) {
             if ($this->test) {
                 return parent::move($directory, $name);
             }
 
-            $target = $this->getTargetFile($directory, $name);
+            $target = (string) $this->getTargetFile($directory, $name);
 
             set_error_handler(function ($type, $msg) use (&$error) {
                 $error = $msg;

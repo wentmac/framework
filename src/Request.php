@@ -805,23 +805,23 @@ class Request
     public function file( string $name = '' )
     {
         $files = $this->file;
-        if ( !empty( $files ) ) {
+        if ( empty( $files ) ) {
+            return false;
+        }
+        if ( strpos( $name, '.' ) ) {
+            [ $name, $sub ] = explode( '.', $name );
+        }
 
-            if ( strpos( $name, '.' ) ) {
-                [ $name, $sub ] = explode( '.', $name );
-            }
+        // 处理上传文件
+        $array = $this->dealUploadFile( $files, $name );
 
-            // 处理上传文件
-            $array = $this->dealUploadFile( $files, $name );
-
-            if ( '' === $name ) {
-                // 获取全部文件
-                return $array;
-            } elseif ( isset( $sub ) && isset( $array[ $name ][ $sub ] ) ) {
-                return $array[ $name ][ $sub ];
-            } elseif ( isset( $array[ $name ] ) ) {
-                return $array[ $name ];
-            }
+        if ( '' === $name ) {
+            // 获取全部文件
+            return $array;
+        } elseif ( isset( $sub ) && isset( $array[ $name ][ $sub ] ) ) {
+            return $array[ $name ][ $sub ];
+        } elseif ( isset( $array[ $name ] ) ) {
+            return $array[ $name ];
         }
     }
 
@@ -848,7 +848,6 @@ class Request
                     foreach ( $keys as $_key ) {
                         $temp[ $_key ] = $file[ $_key ][ $i ];
                     }
-
                     $item[] = new UploadedFile( $temp[ 'tmp_name' ], $temp[ 'name' ], $temp[ 'type' ], $temp[ 'error' ] );
                 }
 
@@ -864,7 +863,6 @@ class Request
                             continue;
                         }
                     }
-
                     $array[ $key ] = new UploadedFile( $file[ 'tmp_name' ], $file[ 'name' ], $file[ 'type' ], $file[ 'error' ] );
                 }
             }

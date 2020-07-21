@@ -83,9 +83,9 @@ class File extends SplFileInfo
      * @access public
      * @param string      $directory 保存路径
      * @param string|null $name      保存的文件名
-     * @return File
+     * @throws FileException if the target file could not be created
      */
-    public function move(string $directory, string $name = null): File
+    public function move(string $directory, string $name = null)
     {
         $target = $this->getTargetFile($directory, $name);
 
@@ -107,9 +107,9 @@ class File extends SplFileInfo
      * 实例化一个新文件
      * @param string      $directory
      * @param null|string $name
-     * @return File
+     * @throws FileException if the target file could not be created
      */
-    protected function getTargetFile(string $directory, string $name = null): File
+    protected function getTargetFile(string $directory, string $name = null)
     {
         if (!is_dir($directory)) {
             if (false === @mkdir($directory, 0777, true) && !is_dir($directory)) {
@@ -120,7 +120,6 @@ class File extends SplFileInfo
         }
 
         $target = rtrim($directory, '/\\') . \DIRECTORY_SEPARATOR . (null === $name ? $this->getBasename() : $this->getName($name));
-
         return new self($target, false);
     }
 
