@@ -9,6 +9,9 @@
  */
 
 namespace Tmac\Plugin;
+
+use Tmac\Contract\ConfigInterface;
+
 class Filter
 {
 
@@ -18,11 +21,14 @@ class Filter
     protected $requiredField = true; //Filter 当前field必选
     protected $failMessage; //最早的一次的失败信息
 
+    protected $config;
+
     /**
      * Filter constructor.
      */
-    public function __construct()
+    public function __construct( ConfigInterface $config )
     {
+        $this->config = $config;
     }
 
 
@@ -511,6 +517,55 @@ class Filter
             }
         }
         return $tmp;
+    }
+
+    /**
+     * 图片上传尺寸，格式校验
+     * @param array $validate
+     * @return mixed
+     */
+    public function checkFileImage( $validate = [] )
+    {
+        return $this->file( 'image_file', $validate );
+    }
+
+
+    /**
+     * 文件上传尺寸，格式校验
+     * @param string $type
+     * @param array $validate
+     * @return bool|UploadedFile
+     */
+    protected function file( $type = 'image_file', $validate = [] )
+    {
+        if ( !( $this->field instanceof UploadedFile ) ) {
+            $this->setErrorMessage( 'file type error' );
+            return false;
+        }
+        if ( empty( $validate ) ) {
+            $validate_array = $this->config[ 'app.validate' ];
+            $validate = $validate_array[ $type ];
+        }
+        if ( empty( $validate[ 'file_size' ] ) || empty( $validate[ 'file_mime' ] ) || !is_array( $validate[ 'file_mime' ] ) ) {
+            $this->setErrorMessage( 'file validate file_size or file_mine invalid' );
+            return false;
+        }
+        $file_size = $validate[ 'file_size' ];
+        $file_mime = $validate[ 'file_mime' ];
+
+        /* @var $file UploadedFile */
+        $file = $this->field;
+        if ( $file->getSize() > $file_size ) {
+            $file_size_format = $file_size / 1024 / 1024;
+            $this->setErrorMessage( "上传文件最大尺寸{$file_size_format}mb" );
+            return false;
+        }
+        if ( !in_array( $file->getOriginalMime(), $file_mime ) ) {
+            $file_mime_format = implode( ',', $file_mime );
+            $this->setErrorMessage( "允许的文件类型：{$file_mime_format}" );
+            return false;
+        }
+        return $file;
     }
 
     /**
