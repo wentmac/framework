@@ -155,7 +155,7 @@ class Filter
     /**
      * 过滤掉参数中的html标签
      * $room_id = Input::get('room_title')->required('房屋标题不能为空')->string();
-     * @return type
+     * @return string
      * @author zhangwentao
      */
     public function string()
@@ -526,7 +526,15 @@ class Filter
      */
     public function checkFileImage( $validate = [] )
     {
-        return $this->file( 'image_file', $validate );
+        $file = $this->file( 'image_file', $validate );
+        if ( $file === false ) {
+            return false;
+        }
+
+        $imageMd5 = md5_file( $file->getPathname() );
+        $imageMd5 = substr( $imageMd5, 8, 16 );
+        $imageId = substr( $imageMd5, 0, 2 ) . '/' . substr( $imageMd5, 2, 2 ) . '/' . substr( $imageMd5, 4 ); //$imageId=a2/xs/sajiknilijklkjj
+        return $imageId;
     }
 
 
@@ -538,7 +546,7 @@ class Filter
      */
     protected function file( $type = 'image_file', $validate = [] )
     {
-        if ( !( $this->field instanceof UploadedFile ) ) {
+        if ( empty( $this->field ) || !( $this->field instanceof UploadedFile ) ) {
             $this->setErrorMessage( 'file type error' );
             return false;
         }
