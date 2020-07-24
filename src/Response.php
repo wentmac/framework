@@ -94,9 +94,25 @@ class Response
             'template_style' => $template_style,
             'template_dir' => $template . $template_style . DIRECTORY_SEPARATOR,
             'cache_dir' => $this->app->getVarPath() . $this->config[ 'app.template.cache_dir' ] . DIRECTORY_SEPARATOR . $template_app_name . DIRECTORY_SEPARATOR . $template_style . DIRECTORY_SEPARATOR, //指定缓存文件存放目录
+            /**
+             * 当模板文件有改动时重新生成缓存 关闭该项会快一些 开发环境打开、生产环境建议关闭 上线模板后删除一下缓存
+             * 生产环境打开的情况下，会调用check方法检查模板过期
+             *
+             * true:  模板缓存文件中的check方法会调用 如果模板文件有变动会重新生成模板缓存文件
+             *
+             * false: 模板缓存文件中的check方法不会调用 每次加载模板缓存时会跳过模板文件的变动检查，性能更高。
+             *        适合在生产环境，此设置后模板变动，上线后清空一下模板缓存
+             */
             'auto_update' => $this->config[ 'app.template.auto_update' ], //当模板文件有改动时重新生成缓存 [关闭该项会快一些]
             'cache_lifetime' => $this->config[ 'app.template.cache_lifetime' ], //缓存生命周期(分钟)，为 0 表示永久 [设置为 0 会快一些]
             'suffix' => $this->config[ 'app.template.suffix' ], //模板后缀
+            /**
+             * true: 加载模板时，会判断模板缓存文件是否存在。
+             *                    不存在就生存模板缓存文件
+             *                    存在就加载模板缓存文件（再根据auto_update状态是否需要check检查模板是否有更新）
+             *
+             * false: 加载模板时，会跳过判断模板缓存文件存在检查。每次都重新生成模板缓存文件
+             */
             'cache_open' => $this->config[ 'app.template.cache_open' ], //是否开启缓存，程序调试时使用
             'value' => $tVar    //压到模板里的变量数据
         );
