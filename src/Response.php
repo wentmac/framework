@@ -50,9 +50,9 @@ class Response
             'action' => $this->container->request->getQuery( 'TMAC_ACTION' ),
             'APP_HOST_URL' => $this->container->config[ 'app.app_host' ],
             'APP_PHP_SELF' => basename( $this->container->request->getServer( 'SCRIPT_NAME' ) ),
-            'STATIC_URL' => $this->container->config[ 'app.template.static_url' ],
-            'STATIC_COMMON_URL' => $this->container->config[ 'app.template.static_url' ] . 'common/',
-            'STATIC_APP_URL' => $this->container->config[ 'app.template.static_url' ] . APP_NAME . '/' . $this->container->config[ 'app.template.template_dir' ] . '/',
+            'STATIC_URL' => $this->container->config[ 'app.static_url' ],
+            'STATIC_COMMON_URL' => $this->container->config[ 'app.static_url' ] . 'common/',
+            'STATIC_APP_URL' => $this->container->config[ 'app.static_url' ] . APP_NAME . '/' . $this->container->config[ 'app.template.template_dir' ] . '/',
         );
         $this->assign( $array );
         $tpl = $this->container->config[ 'app.template.template_dir' ] . DIRECTORY_SEPARATOR . $tpl;
