@@ -60,7 +60,7 @@ class Response
             'APP_PHP_SELF' => basename( $this->request->getServer( 'SCRIPT_NAME' ) ),
             'STATIC_URL' => $this->config[ 'app.static_url' ],
             'STATIC_COMMON_URL' => $this->config[ 'app.static_url' ] . 'common/',
-            'STATIC_APP_URL' => $this->config[ 'app.static_url' ] . APP_NAME . '/' . $this->config[ 'app.template.template_dir' ] . '/',
+            'STATIC_APP_URL' => $this->config[ 'app.static_url' ] . APP_NAME . '/' . $this->config[ 'app.template.template_style' ] . '/',
         ];
     }
 
