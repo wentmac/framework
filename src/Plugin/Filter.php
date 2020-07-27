@@ -520,6 +520,19 @@ class Filter
     }
 
     /**
+     * 返回数组格式
+     * @return array|bool
+     */
+    public function getArray()
+    {
+        if ( !is_array( $this->field ) ) {
+            $this->setErrorMessage( '非array格式' );
+            return false;
+        }
+        return $this->field;
+    }
+
+    /**
      * 图片上传尺寸，格式校验
      * @param array $validate
      * @return mixed
