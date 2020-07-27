@@ -309,8 +309,8 @@ class BaseQueryDatabase
 
     /**
      * 取有可能有where in的语句
-     * @param  $field
-     * @param  $value 支持 array,int_string,int
+     * @param  string $field
+     * @param  array|string $value 支持 array,int_string,int
      * @return type
      */
     public function getWhereInStatement( $field, $value )
