@@ -11,6 +11,7 @@ namespace Tmac;
 use Tmac\Contract\ConfigInterface;
 use Tmac\Plugin\Filter;
 use Tmac\Plugin\UploadedFile;
+use Exception;
 
 class Request
 {

@@ -525,6 +525,9 @@ class Filter
      */
     public function getArray()
     {
+        if ( $this->requiredField !== true ) {
+            return $this->requiredField;
+        }
         if ( !is_array( $this->field ) ) {
             $this->setErrorMessage( '非array格式' );
             return false;
