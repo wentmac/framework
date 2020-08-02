@@ -56,6 +56,10 @@ class Session
         } else if ( $this->config[ 'app.session.type' ] == 'redis' ) {
             ini_set( "session.save_handler", "redis" ); // 是memcached不是memcache
             ini_set( "session.save_path", "{$this->config[ 'app.session.redis_dsn' ]}" );
+            /*
+             * session.save_handler = redis
+             * session.save_path = "tcp://host1:6379?weight=1, tcp://host2:6379?weight=2&timeout=2.5, tcp://host3:6379?weight=2&read_timeout=2.5"
+             */
         }
         session_start();
     }
