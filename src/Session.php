@@ -45,8 +45,8 @@ class Session
             ini_set( 'app.session.gc_maxlifetime', $this->config[ 'app.session.expire' ] );
         if ( $this->config[ 'app.session.type' ] == 'DB' ) {
             ini_set( 'app.session.save_handler', 'user' );  //默认值是 files
-            $hander = $this->container->get( SessionDb::class ); //开始session存放mysql里的相关操作
-            $hander->execute();
+            $handler = $this->container->getShared( SessionDb::class ); //开始session存放mysql里的相关操作
+            $handler->execute();
         } else if ( $this->config[ 'app.session.type' ] == 'memcache' ) {
             ini_set( "session.save_handler", "memcache" );
             ini_set( "session.save_path", "tcp://{$this->config[ 'memcached.host' ]}:{$this->config[ 'memcached.port' ]}" );
@@ -55,7 +55,7 @@ class Session
             ini_set( "session.save_path", "{$this->config[ 'memcached.host' ]}:{$this->config[ 'memcached.port' ]}" ); // 不要tcp:[/b]
         } else if ( $this->config[ 'app.session.type' ] == 'redis' ) {
             ini_set( "session.save_handler", "redis" ); // 是memcached不是memcache
-            ini_set( "session.save_path", "tcp://{$this->config[ 'redis.default.host' ]}:{$this->config[ 'redis.default.port' ]}?auth={$this->config[ 'redis.default.password' ]}" );
+            ini_set( "session.save_path", "{$this->config[ 'app.session.redis_dsn' ]}" );
         }
         session_start();
     }
