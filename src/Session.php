@@ -34,7 +34,7 @@ class Session
      * session 启动初始化
      * @throws \Exception
      */
-    public function init()
+    public function start()
     {
         ini_set( 'app.session.auto_start', 0 ); //指定会话模块是否在请求开始时自动启动一个会话。默认为 0（不启动）。
         if ( !empty ( $this->config[ 'app.session.name' ] ) )
@@ -64,5 +64,26 @@ class Session
         session_start();
     }
 
+    // 设置一个session变量
+
+    public function set(){
+
+    }
+
+    // 检查session变量是否已定义
+
+    public function has(){
+
+    }
+
+    // 获取session变量的值
+
+    public function get(){}
+
+            // 删除session变量
+    public function remove(){}
+
+    // 销毁全部session会话
+    public function destroy(){}
 
 }

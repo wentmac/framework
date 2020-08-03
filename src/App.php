@@ -157,7 +157,7 @@ class App
         set_exception_handler( array( $this, 'tmacException' ) );
         //是否自动开启Session 您可以在控制器中初始化，也可以在系统中自动加载
         if ( $this->container->config[ 'app.session.start' ] ) {
-            $this->container->session->init();
+            $this->container->session->start();
         }
     }
     
