@@ -10,16 +10,26 @@ namespace Tmac;
 
 
 use Tmac\Contract\ConfigInterface;
+use ArrayAccess;
 
 /**
  * SESSION管理类
  * @package think
  */
-class Session
+class Session implements ArrayAccess
 {
     use DITrait;
 
     protected $config;
+
+    /**
+     * @var session
+     * 会话状态
+     * 会话是启用的，而且存在当前会话
+     *
+     * 默认状态是0 未加载状态
+     */
+    private $is_active = 0;
 
     /**
      * 构造方法
@@ -36,6 +46,9 @@ class Session
      */
     public function start()
     {
+        if ( $this->getIsActive() ) {
+            return;
+        }
         ini_set( 'app.session.auto_start', 0 ); //指定会话模块是否在请求开始时自动启动一个会话。默认为 0（不启动）。
         if ( !empty ( $this->config[ 'app.session.name' ] ) )
             session_name( $this->config[ 'app.session.name' ] ); //默认为 PHPSESSID
@@ -64,26 +77,191 @@ class Session
         session_start();
     }
 
-    // 设置一个session变量
-
-    public function set(){
-
+    /**
+     * @return bool whether the session has started
+     */
+    public function getIsActive()
+    {
+        if ( $this->is_active === 0 ) {
+            //还未加载
+            $this->is_active = session_status() === PHP_SESSION_ACTIVE;
+        }
+        return $this->is_active;
     }
 
-    // 检查session变量是否已定义
-
-    public function has(){
-
+    /**
+     * Returns the number of items in the session.
+     * @return int the number of session variables
+     * @throws \Exception
+     */
+    private function getCount()
+    {
+        $this->start();
+        return count( $_SESSION );
     }
 
-    // 获取session变量的值
+    /**
+     * Returns the number of items in the session.
+     * This method is required by [[\Countable]] interface.
+     * @return int number of items in the session.
+     * @throws \Exception
+     */
+    public function count()
+    {
+        return $this->getCount();
+    }
 
-    public function get(){}
+    /**
+     * * Returns the session variable value with the session variable name.
+     * If the session variable does not exist, the `$defaultValue` will be returned.
+     * @param string $key the session variable name
+     * @param mixed $defaultValue the default value to be returned when the session variable does not exist.
+     * @return mixed the session variable value, or $defaultValue if the session variable does not exist.
+     * @throws \Exception
+     */
+    public function get( $key, $defaultValue = null )
+    {
+        $this->start();
+        return isset( $_SESSION[ $key ] ) ? $_SESSION[ $key ] : $defaultValue;
+    }
 
-            // 删除session变量
-    public function remove(){}
 
-    // 销毁全部session会话
-    public function destroy(){}
+    /**
+     * Adds a session variable.
+     * If the specified name already exists, the old value will be overwritten.
+     * @param string $key session variable name
+     * @param mixed $value session variable value
+     * @throws \Exception
+     */
+    public function set( $key, $value )
+    {
+        $this->start();
+        $_SESSION[ $key ] = $value;
+    }
+
+
+    /**
+     * Removes a session variable.
+     * @param string $key the name of the session variable to be removed
+     * @return mixed the removed value, null if no such session variable.
+     * @throws \Exception
+     */
+    public function remove( $key )
+    {
+        $this->start();
+        if ( isset( $_SESSION[ $key ] ) ) {
+            $value = $_SESSION[ $key ];
+            unset( $_SESSION[ $key ] );
+
+            return $value;
+        }
+
+        return null;
+    }
+
+    /**
+     * Removes all session variables.
+     * @throws \Exception
+     */
+    public function removeAll()
+    {
+        $this->start();
+        foreach ( array_keys( $_SESSION ) as $key ) {
+            unset( $_SESSION[ $key ] );
+        }
+    }
+
+    /**
+     * @param mixed $key session variable name
+     * @return bool whether there is the named session variable
+     * @throws \Exception
+     */
+    public function has( $key )
+    {
+        $this->start();
+        return isset( $_SESSION[ $key ] );
+    }
+
+
+    /**
+     * Ends the current session and store session data.
+     */
+    public function close()
+    {
+        if ( $this->getIsActive() ) {
+            session_write_close();
+        }
+    }
+
+    /**
+     * Sets the session ID.
+     * This is a wrapper for [PHP session_id()](https://secure.php.net/manual/en/function.session-id.php).
+     * @param string $value the session ID for the current session
+     */
+    public function setId( $value )
+    {
+        session_id( $value );
+    }
+
+    /**
+     * 销毁全部session会话
+     * @throws \Exception
+     */
+    public function destroy()
+    {
+        if ( $this->getIsActive() ) {
+            $sessionId = session_id();
+            $this->close();
+            $this->setId( $sessionId );
+            $this->start();
+            session_unset();
+            session_destroy();
+            $this->setId( $sessionId );
+        }
+    }
+
+
+    /**
+     * This method is required by the interface [[\ArrayAccess]].
+     * @param mixed $offset the offset to check on
+     * @return bool
+     * @throws \Exception
+     */
+    public function offsetExists( $offset )
+    {
+        return $this->has( $offset );
+    }
+
+    /**
+     * This method is required by the interface [[\ArrayAccess]].
+     * @param int $offset the offset to retrieve element.
+     * @return mixed the element at the offset, null if no element is found at the offset
+     * @throws \Exception
+     */
+    public function offsetGet( $offset )
+    {
+        $this->get( $offset );
+    }
+
+    /**
+     * This method is required by the interface [[\ArrayAccess]].
+     * @param int $offset the offset to set element
+     * @param mixed $item the element value
+     * @throws \Exception
+     */
+    public function offsetSet( $offset, $item )
+    {
+        return $this->set( $offset, $item );
+    }
+
+    /**
+     * This method is required by the interface [[\ArrayAccess]].
+     * @param mixed $offset the offset to unset element
+     * @throws \Exception
+     */
+    public function offsetUnset( $offset )
+    {
+        return $this->remove( $offset );
+    }
 
 }
