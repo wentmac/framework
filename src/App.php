@@ -72,6 +72,14 @@ class App
     {
         return $this->app_path;
     }
+
+    /**
+     * @return int
+     */
+    public function getCurrentTime(): int
+    {
+        return $this->begin_time;
+    }
     
     /**
      * App constructor.
