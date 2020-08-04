@@ -10,6 +10,7 @@
 namespace Tmac;
 
 use Tmac\Contract\ConfigInterface;
+use Tmac\Exception\TmacException;
 
 class Response
 {
@@ -182,6 +183,7 @@ class Response
      * @param type $data
      * @param type $debug
      * @param type $format
+     * @throws TmacException
      */
     public function apiReturn( $data = array(), $debug = 0, $format = 'json' )
     {
@@ -191,16 +193,37 @@ class Response
             'data' => $data
         );
         if ( $debug == 1 ) {
-            header( "Content-type: text/html; charset=utf-8" );
+            $this->setHeader( 'Content-type', 'text/html; charset=utf-8' );
             echo '<pre>';
             print_r( $return );
             echo '</pre>';
         } else {
             if ( $format == 'json' ) {
-                header( "Content-type: application/json; charset=utf-8" );
+                $this->setHeader( 'Content-type', 'application/json; charset=utf-8' );
                 echo json_encode( $return, JSON_UNESCAPED_UNICODE );
                 exit;
             }
         }
     }
+
+
+    /**
+     * Sets a header by name.
+     *
+     * @param string $key The key
+     * @param string|string[] $values The value or an array of values
+     * @param bool $replace Whether to replace the actual value or not (true by default)
+     * @throws TmacException
+     */
+    public function setHeader( $key, $value )
+    {
+        if ( !headers_sent() ) {
+            $key = ucfirst( strtolower( $key ) );
+            header( $key . ': ' . $value );
+        } else {
+            throw new TmacException( 'Header already sent.' );
+        }
+
+    }
+
 }
