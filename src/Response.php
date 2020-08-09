@@ -11,6 +11,7 @@ namespace Tmac;
 
 use Tmac\Contract\ConfigInterface;
 use Tmac\Exception\TmacException;
+use Tmac\Exception\InvalidArgumentException;
 
 class Response
 {
@@ -19,16 +20,114 @@ class Response
     protected $tVar = []; // 模板输出变量
     protected $app;
     protected $config;
+    protected $cookie;
     protected $request;
 
     //自定义模板风格
     protected $template_style = '';
 
-    public function __construct( ConfigInterface $config, App $app, Request $request )
+    /**
+     * header参数
+     * @var array
+     */
+    protected $header = [];
+
+    /**
+     * @var array list of HTTP status codes and the corresponding texts
+     */
+    public static $httpStatuses = [
+        100 => 'Continue',
+        101 => 'Switching Protocols',
+        102 => 'Processing',
+        118 => 'Connection timed out',
+        200 => 'OK',
+        201 => 'Created',
+        202 => 'Accepted',
+        203 => 'Non-Authoritative',
+        204 => 'No Content',
+        205 => 'Reset Content',
+        206 => 'Partial Content',
+        207 => 'Multi-Status',
+        208 => 'Already Reported',
+        210 => 'Content Different',
+        226 => 'IM Used',
+        300 => 'Multiple Choices',
+        301 => 'Moved Permanently',
+        302 => 'Found',
+        303 => 'See Other',
+        304 => 'Not Modified',
+        305 => 'Use Proxy',
+        306 => 'Reserved',
+        307 => 'Temporary Redirect',
+        308 => 'Permanent Redirect',
+        310 => 'Too many Redirect',
+        400 => 'Bad Request',
+        401 => 'Unauthorized',
+        402 => 'Payment Required',
+        403 => 'Forbidden',
+        404 => 'Not Found',
+        405 => 'Method Not Allowed',
+        406 => 'Not Acceptable',
+        407 => 'Proxy Authentication Required',
+        408 => 'Request Time-out',
+        409 => 'Conflict',
+        410 => 'Gone',
+        411 => 'Length Required',
+        412 => 'Precondition Failed',
+        413 => 'Request Entity Too Large',
+        414 => 'Request-URI Too Long',
+        415 => 'Unsupported Media Type',
+        416 => 'Requested range unsatisfiable',
+        417 => 'Expectation failed',
+        418 => 'I\'m a teapot',
+        421 => 'Misdirected Request',
+        422 => 'Unprocessable entity',
+        423 => 'Locked',
+        424 => 'Method failure',
+        425 => 'Unordered Collection',
+        426 => 'Upgrade Required',
+        428 => 'Precondition Required',
+        429 => 'Too Many Requests',
+        431 => 'Request Header Fields Too Large',
+        449 => 'Retry With',
+        450 => 'Blocked by Windows Parental Controls',
+        451 => 'Unavailable For Legal Reasons',
+        500 => 'Internal Server Error',
+        501 => 'Not Implemented',
+        502 => 'Bad Gateway or Proxy Error',
+        503 => 'Service Unavailable',
+        504 => 'Gateway Time-out',
+        505 => 'HTTP Version not supported',
+        507 => 'Insufficient storage',
+        508 => 'Loop Detected',
+        509 => 'Bandwidth Limit Exceeded',
+        510 => 'Not Extended',
+        511 => 'Network Authentication Required',
+    ];
+
+    /**
+     * @var int the HTTP status code to send with the response.
+     */
+    private $_statusCode = 200;
+
+    /**
+     * @var bool whether the response has been sent. If this is true, calling [[send()]] will do nothing.
+     */
+    public $isSent = false;
+
+    /**
+     * @var string the response content. When [[data]] is not null, it will be converted into [[content]]
+     * according to [[format]] when the response is being sent out.
+     * @see data
+     */
+    public $content;
+
+    public function __construct( ConfigInterface $config, App $app, Request $request, Cookie $cookie )
     {
         $this->config = $config;
         $this->app = $app;
         $this->request = $request;
+        $this->cookie = $cookie;
     }
 
     /**
@@ -76,9 +175,11 @@ class Response
         //设置模板中的全局变量|前台模板目录
         $this->assign( $this->getTplVarArray() );
         //$this->template_style = 'blue';//自定义指定加载blue风格模板
+        //设置编码
+        $this->setHeader( 'Content-type', "text/html;charset={$this->config['app.charset']}" );
+        $this->send();
         return $this->view( $tpl, $this->tVar );
     }
-
 
     /**
      * @param string|null $view
@@ -195,17 +296,72 @@ class Response
         if ( $debug == 1 ) {
             $this->setHeader( 'Content-type', 'text/html; charset=utf-8' );
             echo '<pre>';
-            print_r( $return );
-            echo '</pre>';
+            $this->setContent( $return );
         } else {
             if ( $format == 'json' ) {
                 $this->setHeader( 'Content-type', 'application/json; charset=utf-8' );
-                echo json_encode( $return, JSON_UNESCAPED_UNICODE );
-                exit;
+                $this->setContent( json_encode( $return, JSON_UNESCAPED_UNICODE ) );
+            }
+        }
+        $this->send();
+    }
+
+    /**
+     * @return bool whether this response has a valid [[statusCode]].
+     */
+    private function getIsInvalid()
+    {
+        return $this->getStatusCode() < 100 || $this->getStatusCode() >= 600;
+    }
+
+    /**
+     * @return int the HTTP status code to send with the response.
+     */
+    private function getStatusCode()
+    {
+        return $this->_statusCode;
+    }
+
+    /**
+     * Sets the response status code.
+     * This method will set the corresponding status text if `$text` is null.
+     * @param int $value the status code
+     * @param string $text the status text. If not set, it will be set automatically based on the status code.
+     * @return $this the response object itself
+     * @throws InvalidArgumentException if the status code is invalid.
+     */
+    public function setStatusCode( $value, $text = null )
+    {
+        if ( $value === null ) {
+            $value = 200;
+        }
+        $this->_statusCode = (int) $value;
+        if ( $this->getIsInvalid() ) {
+            throw new InvalidArgumentException( "The HTTP status code is invalid: $value" );
+        }
+        if ( $text === null ) {
+            $this->statusText = isset( static::$httpStatuses[ $this->_statusCode ] ) ? static::$httpStatuses[ $this->_statusCode ] : '';
+        } else {
+            $this->statusText = $text;
+        }
+
+        return $this;
+    }
+
+    /**
+     * 发送 header
+     */
+    private function sendHeader(): void
+    {
+        if ( !headers_sent() && !empty( $this->header ) ) {
+            // 发送状态码
+            http_response_code( $this->getStatusCode() );
+            // 发送头部信息
+            foreach ( $this->header as $name => $val ) {
+                header( $name . ( !is_null( $val ) ? ':' . $val : '' ) );
             }
         }
     }
-
 
     /**
      * Sets a header by name.
@@ -215,15 +371,56 @@ class Response
      * @param bool $replace Whether to replace the actual value or not (true by default)
      * @throws TmacException
      */
-    public function setHeader( $key, $value )
+    public function setHeader( $key, $value ): void
     {
-        if ( !headers_sent() ) {
-            $key = ucfirst( strtolower( $key ) );
-            header( $key . ': ' . $value );
-        } else {
-            throw new TmacException( 'Header already sent.' );
-        }
+        $this->header[ $key ] = $value;
+    }
 
+    /**
+     * 设置页面输出内容
+     * @access public
+     * @param mixed $content
+     * @return $this
+     */
+    private  function setContent( $content )
+    {
+        $this->content = (string) $content;
+        return $this;
+    }
+
+    /**
+     * 输出数据
+     * @access protected
+     * @param string $data 要处理的数据
+     * @return void
+     */
+    private  function sendContent(): void
+    {
+        if ( !empty( $this->content ) ) {
+            echo $this->content;
+        }
+    }
+
+    /**
+     * 写入cookie
+     */
+    private function sendCookie(): void
+    {
+        $this->cookie->save();
+    }
+
+    /**
+     * Sends the response to the client.
+     */
+    private function send()
+    {
+        if ( $this->isSent ) {
+            return;
+        }
+        $this->sendHeader();
+        $this->sendCookie();
+        $this->sendContent();
+        $this->isSent = true;
     }
 
 }

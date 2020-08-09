@@ -29,7 +29,7 @@ class Session implements ArrayAccess
      *
      * 默认状态是0 未加载状态
      */
-    private $is_active = 0;
+    private $is_active = false;
 
     /**
      * 构造方法
@@ -49,15 +49,17 @@ class Session implements ArrayAccess
         if ( $this->getIsActive() ) {
             return;
         }
-        ini_set( 'app.session.auto_start', 0 ); //指定会话模块是否在请求开始时自动启动一个会话。默认为 0（不启动）。
+        ini_set( 'session.auto_start', 0 ); //指定会话模块是否在请求开始时自动启动一个会话。默认为 0（不启动）。
         if ( !empty ( $this->config[ 'app.session.name' ] ) )
             session_name( $this->config[ 'app.session.name' ] ); //默认为 PHPSESSID
         if ( !empty ( $this->config[ 'app.session.path' ] ) )
             session_save_path( $this->config[ 'app.session.path' ] ); //如果选择了默认的 files 文件处理器，则此值是创建文件的路径。默认为 /tmp。
-        if ( !empty ( $this->config[ 'app.session.expire' ] ) )
-            ini_set( 'app.session.gc_maxlifetime', $this->config[ 'app.session.expire' ] );
+        if ( !empty ( $this->config[ 'app.session.gc_maxlifetime' ] ) )
+            ini_set( 'session.gc_maxlifetime', $this->config[ 'app.session.gc_maxlifetime' ] );
+        if ( !empty ( $this->config[ 'app.session.cookie_lifetime' ] ) )
+            ini_set( 'session.cookie_lifetime', $this->config[ 'app.session.cookie_lifetime' ] );
         if ( $this->config[ 'app.session.type' ] == 'DB' ) {
-            ini_set( 'app.session.save_handler', 'user' );  //默认值是 files
+            ini_set( 'session.save_handler', 'user' );  //默认值是 files
             $handler = $this->container->getShared( SessionDb::class ); //开始session存放mysql里的相关操作
             $handler->execute();
         } else if ( $this->config[ 'app.session.type' ] == 'memcache' ) {
@@ -82,7 +84,7 @@ class Session implements ArrayAccess
      */
     public function getIsActive()
     {
-        if ( $this->is_active === 0 ) {
+        if ( $this->is_active === false ) {
             //还未加载
             $this->is_active = session_status() === PHP_SESSION_ACTIVE;
         }
@@ -109,6 +111,17 @@ class Session implements ArrayAccess
     public function count()
     {
         return $this->getCount();
+    }
+
+    /**
+     * 返回全部session
+     * @return array
+     * @throws \Exception
+     */
+    public function all()
+    {
+        $this->start();
+        return $_SESSION;
     }
 
     /**
@@ -203,6 +216,11 @@ class Session implements ArrayAccess
         session_id( $value );
     }
 
+    public function getId()
+    {
+        return session_id();
+    }
+
     /**
      * 销毁全部session会话
      * @throws \Exception
@@ -210,13 +228,8 @@ class Session implements ArrayAccess
     public function destroy()
     {
         if ( $this->getIsActive() ) {
-            $sessionId = session_id();
-            $this->close();
-            $this->setId( $sessionId );
-            $this->start();
             session_unset();
             session_destroy();
-            $this->setId( $sessionId );
         }
     }
 
@@ -240,7 +253,7 @@ class Session implements ArrayAccess
      */
     public function offsetGet( $offset )
     {
-        $this->get( $offset );
+        return $this->get( $offset );
     }
 
     /**

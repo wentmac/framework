@@ -15,8 +15,6 @@ use Exception;
 
 class Request
 {
-    protected $config;
-
     protected $request;
     protected $get;
     protected $post;
@@ -25,7 +23,6 @@ class Request
 
     protected $server;
     protected $header;
-    protected $cookie;
 
     /**
      * 请求类型
@@ -105,7 +102,6 @@ class Request
         $this->input = file_get_contents( 'php://input' );
         $this->input_data = $this->getInputData( $this->input );
         $this->request = $_REQUEST;
-        $this->cookie = $_COOKIE;
         $this->file = $_FILES ?? [];
 
         $this->filter = $filter;
@@ -703,48 +699,6 @@ class Request
     {
         return $this->isSsl() ? 'https' : 'http';
     }
-
-
-    /**
-     * 获取cookie参数
-     * @access public
-     * @param mixed $name 数据名称
-     * @param string $default 默认值
-     * @param string|array $filter 过滤方法
-     * @return mixed
-     */
-    public function cookie( string $name = '', $default = null, $filter = '' )
-    {
-        if ( !empty( $name ) ) {
-            $data = $this->getData( $this->cookie, $name, $default );
-        } else {
-            $data = $this->cookie;
-        }
-        return $data;
-    }
-
-
-    /**
-     * 获取数据
-     * @access public
-     * @param array $data 数据源
-     * @param string $name 字段名
-     * @param mixed $default 默认值
-     * @return mixed
-     */
-    protected function getData( array $data, string $name, $default = null )
-    {
-        foreach ( explode( '.', $name ) as $val ) {
-            if ( isset( $data[ $val ] ) ) {
-                $data = $data[ $val ];
-            } else {
-                return $default;
-            }
-        }
-
-        return $data;
-    }
-
 
     /**
      * 检测是否是合法的IP地址

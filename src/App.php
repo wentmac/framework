@@ -80,7 +80,7 @@ class App
     {
         return $this->begin_time;
     }
-    
+
     /**
      * App constructor.
      * @param string $root_path
@@ -136,8 +136,6 @@ class App
      */
     protected function initialize()
     {
-        //设置编码
-        header( "Content-type: text/html;charset={$this->container->config['app.charset']}" );
         //设置时区
         date_default_timezone_set( $this->container->config[ 'app.default_timezone' ] );
         //生成htaccess文件
@@ -168,7 +166,6 @@ class App
             $this->container->session->start();
         }
     }
-    
 
     /**
      * 获取File缓存实例
