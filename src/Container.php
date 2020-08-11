@@ -354,10 +354,7 @@ class Container implements ArrayAccess, ContainerInterface
      */
     private function getObjectBindName( $abstract, $concrete )
     {
-        //class_alias
-        if ( !empty( $concrete[ 'class_alias' ] ) ) {
-            $bind_name = $concrete[ 'class_alias' ];
-        } else if ( !empty( $concrete[ 'alias' ] ) ) {
+        if ( !empty( $concrete[ 'alias' ] ) ) {
             $bind_name = $concrete[ 'alias' ] . ' $' . $abstract;
         } else {
             //Object或Closure 对象或闭包回调 没有设置 类别名 alias
@@ -697,7 +694,7 @@ class Container implements ArrayAccess, ContainerInterface
         $className = $class->getName();
 
         /*
-        add start @20200715 支持
+        add start @20200715 支持 alias 类声明自动注入的别名
         ===========================================
         $container->setShared( 'boat_a', [
             'class' => \App\Service\BoatService::class,
