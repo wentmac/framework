@@ -296,6 +296,107 @@ class MysqliDatabase extends AbstractDatabase
     }
 
     /**
+     * 通过setWhere等方法来取查询的最终sql;
+     * 主要是给UNION 或 UNION ALL用的  where IN($sql)
+     * $query1= $dao->getSqlByWhere();
+     * $query2= $dao->getSqlByWhere();
+     * $res = $dao->getConn()->getAllObject($query1." UNION ".$query2);
+     *
+     * @return type
+     */
+    public function getSqlByWhere( BaseQueryDatabase $query )
+    {
+        $sql = "SELECT ";
+        if ( $query->getTop() != null ) {
+            $sql .= "TOP {$this->getTop()} ";
+        }
+        $sql .= "{$query->getField()} "
+            . "FROM {$query->getTable()} ";
+
+        if ( $query->getJoinString() != null ) {
+            $sql .= "{$query->getJoinString()} ";
+        }
+        if ( $query->getWhere() != null ) {
+            $sql .= "WHERE {$query->getWhere()} ";
+        }
+        if ( $query->getGroupby() != null ) {
+            $sql .= "GROUP BY {$query->getGroupby()} ";
+        }
+        if ( $query->getOrderBy() != null ) {
+            $sql .= "ORDER BY {$query->getOrderBy()} ";
+        }
+        if ( $query->getLimit() != null && $query->getOffset() != null ) {
+            $sql .= "LIMIT {$query->getLimit()} {$query->getOffset()}";
+        }
+        return $sql;
+    }
+
+    /**
+     * 通过主键取数据库信息
+     * @return type
+     */
+    public function getInfoSqlByPk( BaseQueryDatabase $query )
+    {
+        $sql = "SELECT {$this->getField()} "
+            . "FROM {$this->getTable()} "
+            . "WHERE {$this->getPrimaryKey()}={$this->getPk()}";
+        return $sql;
+    }
+
+    /**
+     * 通过$where条件取数据库信息
+     * @return type
+     */
+    public function getInfoSqlByWhere( BaseQueryDatabase $query )
+    {
+        $sql = "SELECT {$query->getField()} "
+            . "FROM {$query->getTable()} ";
+        if ( $query->getJoinString() != null ) {
+            $sql .= "{$query->getJoinString()} ";
+        }
+        $sql .= "WHERE {$query->getWhere()}";
+        if ( $query->getOrderBy() !== null ) {
+            $sql .= " ORDER BY {$query->getOrderBy()} ";
+        }
+        return $sql;
+    }
+
+    /**
+     * 通过$where条件取总数
+     * @return integer
+     */
+    public function getCountSqlByWhere( BaseQueryDatabase $query )
+    {
+        $sql_count = "SELECT COUNT({$query->getCountField()}) FROM {$query->getTable()} ";
+        if ( $query->getWhere() !== null ) {
+            $sql_count .= "WHERE " . $query->getWhere();
+        }
+        return $sql_count;
+    }
+
+    /**
+     * 通过主键删除一条记录{删除数据的操作请慎用}
+     * @return type
+     */
+    public function getDeleteSqlByPk( BaseQueryDatabase $query )
+    {
+        $sql = "DELETE FROM {$query->getTable()} "
+            . "WHERE {$query->getPrimaryKey()}={$query->getPk()}";
+        return $sql;
+    }
+
+    /**
+     * 通过$where条件删除N条记录{删除数据的操作请慎用}
+     * @return type
+     */
+    public function getDeleteSqlByWhere( BaseQueryDatabase $query )
+    {
+        $sql = "DELETE FROM {$query->getTable()} "
+            . "WHERE {$query->getWhere()}";
+        return $sql;
+    }
+
+    /**
      * Closes the database connection.
      */
     public function __destruct()

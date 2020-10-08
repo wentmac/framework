@@ -10,31 +10,71 @@
 
 namespace Tmac\Database;
 
+use Tmac\Database\Concern\BuilderQuery;
+use Tmac\Database\Concern\OrmQuery;
+use Tmac\Database\Concern\ParamsBind;
+use Closure;
 
 class BaseQueryDatabase
 {
+    use OrmQuery;
+    use BuilderQuery;
+    use ParamsBind;
+
+    protected $driverDatabase;
     protected $conn;
     protected $pk;
     private $primaryKey; //主键字段名
     protected $table;
     protected $field = '*';
-    protected $count_field = '*';
+    protected $countField = '*';
     protected $where;
-    protected $orderby;
-    protected $groupby;
+    protected $orderBy;
+    protected $groupBy;
     protected $limit;
     protected $top;
     protected $joinString;
+
+    /**
+     * 当前查询参数
+     * @var array
+     */
+    protected $options = [];
+    /**
+     * All of the available clause operators.
+     *
+     * @var array
+     */
+    public $operators = [
+        '=', '<', '>', '<=', '>=', '<>', '!=', '<=>',
+        'like', 'like binary', 'not like', 'ilike',
+        '&', '|', '^', '<<', '>>',
+        'rlike', 'not rlike', 'regexp', 'not regexp',
+        '~', '~*', '!~', '!~*', 'similar to',
+        'not similar to', 'not ilike', '~~*', '!~~*',
+    ];
 
     /**
      * 初始化
      */
     public function __construct( DriverDatabase $connection, $table, $primaryKey )
     {
+        $this->driverDatabase = $connection;
         $this->conn = $connection->getInstance();
         $this->table = $table;
         $this->primaryKey = $primaryKey;
     }
+
+    /**
+     * 创建一个新的查询对象
+     * @access public
+     * @return BaseQuery
+     */
+    public function newQuery(): BaseQueryDatabase
+    {
+        return new static( $this->driverDatabase, $this->table, $this->primaryKey );
+    }
+
 
     public function getConn()
     {
@@ -51,14 +91,14 @@ class BaseQueryDatabase
         return $this->field;
     }
 
-    public function getOrderby()
+    public function getOrderBy()
     {
-        return $this->orderby;
+        return $this->orderBy;
     }
 
     function getGroupby()
     {
-        return $this->groupby;
+        return $this->groupBy;
     }
 
     public function setField( $field )
@@ -67,21 +107,29 @@ class BaseQueryDatabase
         return $this;
     }
 
-    function setCountField( $count_field )
+    /**
+     * @return string
+     */
+    public function getCountField(): string
     {
-        $this->count_field = $count_field;
+        return $this->countField;
+    }
+
+    function setCountField( $countField )
+    {
+        $this->countField = $countField;
         return $this;
     }
 
-    function setGroupby( $groupby )
+    function setGroupby( $groupBy )
     {
-        $this->groupby = $groupby;
+        $this->groupBy = $groupBy;
         return $this;
     }
 
-    public function setOrderby( $orderby )
+    public function setOrderBy( $orderBy )
     {
-        $this->orderby = $orderby;
+        $this->orderBy = $orderBy;
         return $this;
     }
 
@@ -101,9 +149,9 @@ class BaseQueryDatabase
         return $this->limit;
     }
 
-    public function setLimit( $limit )
+    public function setLimit( int $limit, int $offset = null )
     {
-        $this->limit = $limit;
+        $this->limit = $limit . ( $offset ? ',' . $offset : '' );
         return $this;
     }
 
@@ -129,7 +177,7 @@ class BaseQueryDatabase
         return $this;
     }
 
-    protected function getPrimaryKey()
+    public function getPrimaryKey()
     {
         return $this->primaryKey;
     }
@@ -137,6 +185,39 @@ class BaseQueryDatabase
     protected function setPrimaryKey( $primaryKey )
     {
         $this->primaryKey = $primaryKey;
+        return $this;
+    }
+
+    /**
+     * 获取当前的查询参数
+     * @access public
+     * @param string $name 参数名
+     * @return mixed
+     */
+    public function getOptions( string $name = '' )
+    {
+        if ( '' === $name ) {
+            return $this->options;
+        }
+
+        return $this->options[ $name ] ?? null;
+    }
+
+
+    /**
+     * @return mixed
+     */
+    public function getJoinString()
+    {
+        return $this->joinString;
+    }
+
+    /**
+     * @param mixed $joinString
+     */
+    public function setJoinString( $joinString )
+    {
+        $this->joinString = $joinString;
         return $this;
     }
 
@@ -149,9 +230,7 @@ class BaseQueryDatabase
         if ( !empty( $id ) ) {
             $this->pk = $id;
         }
-        $sql = "SELECT {$this->getField()} "
-            . "FROM {$this->getTable()} "
-            . "WHERE {$this->getPrimaryKey()}={$this->getPk()}";
+        $sql = $this->getConn()->getInfoSqlByPk( $this );
         $res = $this->getConn()->getRowObject( $sql );
         return $res;
     }
@@ -162,15 +241,7 @@ class BaseQueryDatabase
      */
     public function getInfoByWhere()
     {
-        $sql = "SELECT {$this->getField()} "
-            . "FROM {$this->getTable()} ";
-        if ( $this->joinString != null ) {
-            $sql .= "{$this->joinString} ";
-        }
-        $sql .= "WHERE {$this->getWhere()}";
-        if ( $this->getOrderby() != null ) {
-            $sql .= " ORDER BY {$this->getOrderby()} ";
-        }
+        $sql = $this->getConn()->getInfoSqlByWhere( $this );
         $res = $this->getConn()->getRowObject( $sql );
         return $res;
     }
@@ -181,7 +252,7 @@ class BaseQueryDatabase
      */
     public function getArrayListByWhere()
     {
-        $sql = $this->getSqlByWhere();
+        $sql = $this->getConn()->getSqlByWhere( $this );
         $res = $this->getConn()->getAll( $sql );
         return $res;
     }
@@ -192,45 +263,9 @@ class BaseQueryDatabase
      */
     public function getListByWhere()
     {
-        $sql = $this->getSqlByWhere();
+        $sql = $this->getConn()->getSqlByWhere( $this );
         $res = $this->getConn()->getAllObject( $sql );
         return $res;
-    }
-
-    /**
-     * 通过setWhere等方法来取查询的最终sql;
-     * 主要是给UNION 或 UNION ALL用的  where IN($sql)
-     * $query1= $dao->getSqlByWhere();
-     * $query2= $dao->getSqlByWhere();
-     * $res = $dao->getConn()->getAllObject($query1." UNION ".$query2);
-     *
-     * @return type
-     */
-    public function getSqlByWhere()
-    {
-        $sql = "SELECT ";
-        if ( $this->getTop() != null ) {
-            $sql .= "TOP {$this->getTop()} ";
-        }
-        $sql .= "{$this->getField()} "
-            . "FROM {$this->getTable()} ";
-
-        if ( $this->joinString != null ) {
-            $sql .= "{$this->joinString} ";
-        }
-        if ( $this->getWhere() != null ) {
-            $sql .= "WHERE {$this->getWhere()} ";
-        }
-        if ( $this->getGroupby() != null ) {
-            $sql .= "GROUP BY {$this->getGroupby()} ";
-        }
-        if ( $this->getOrderby() != null ) {
-            $sql .= "ORDER BY {$this->getOrderby()} ";
-        }
-        if ( $this->getLimit() != null ) {
-            $sql .= "LIMIT {$this->getLimit()}";
-        }
-        return $sql;
     }
 
     /**
@@ -239,10 +274,7 @@ class BaseQueryDatabase
      */
     public function getCountByWhere()
     {
-        $sql_count = "SELECT COUNT({$this->count_field}) FROM {$this->getTable()} ";
-        if ( $this->getWhere() != null ) {
-            $sql_count .= "WHERE " . $this->getWhere();
-        }
+        $sql_count = $this->getConn()->getCountSqlByWhere( $this );
         $count = $this->getConn()->getOne( $sql_count );
         return $count;
     }
@@ -289,8 +321,7 @@ class BaseQueryDatabase
      */
     public function deleteByPk()
     {
-        $sql = "DELETE FROM {$this->getTable()} "
-            . "WHERE {$this->getPrimaryKey()}={$this->getPk()}";
+        $sql = $this->getConn()->getDeleteSqlByPk( $this );
         $res = $this->getConn()->execute( $sql );
         return $res;
     }
@@ -301,16 +332,15 @@ class BaseQueryDatabase
      */
     public function deleteByWhere()
     {
-        $sql = "DELETE FROM {$this->getTable()} "
-            . "WHERE {$this->getWhere()}";
+        $sql = $this->getConn()->getDeleteSqlByWhere( $this );
         $res = $this->getConn()->execute( $sql );
         return $res;
     }
 
     /**
      * 取有可能有where in的语句
-     * @param  string $field
-     * @param  array|string $value 支持 array,int_string,int
+     * @param string $field
+     * @param array|string $value 支持 array,int_string,int
      * @return type
      */
     public function getWhereInStatement( $field, $value )
@@ -353,5 +383,139 @@ class BaseQueryDatabase
         }
         $this->joinString = $joinTypeString . ' ' . $joinTable . ' ON ' . $on;
         return $this;
+    }
+
+
+    /**
+     * where解析
+     */
+    private function parseWhere( $column, $operator = null, $value = null, $boolean = 'and' )
+    {
+        // If the column is an array, we will assume it is an array of key-value pairs
+        // and can add them each as a where clause. We will maintain the boolean we
+        // received when the method was called and pass it into the nested where.
+        if ( is_array( $column ) ) {
+            return $this->addArrayOfWheres( $column, $boolean );
+        }
+
+        // If the columns is actually a Closure instance, we will assume the developer
+        // wants to begin a nested where statement which is wrapped in parenthesis.
+        // We'll add that Closure to the query then return back out immediately.
+        if ( $column instanceof Closure ) {
+            $subWhereSql = $this->parseClosureWhere( $this->newQuery(), $column, $boolean );
+            if ( $subWhereSql ) {
+                $this->options[ 'where' ][] = new Raw( $subWhereSql );
+            }
+            return $this;
+        }
+
+        $this->options[ 'where' ][] = compact(
+            'column', 'operator', 'value', 'boolean'
+        );
+
+        return $this;
+    }
+
+    public function where( $column, $operator = null, $value = null )
+    {
+        [ $value, $operator ] = $this->prepareValueAndOperator(
+            $value, $operator, func_num_args() === 2
+        );
+        $this->options[ 'where' ] = [];//初始化where数组
+        return $this->parseWhere( $column, $operator, $value );
+    }
+
+
+    public function andWhere( $column, $operator = null, $value = null )
+    {
+        [ $value, $operator ] = $this->prepareValueAndOperator(
+            $value, $operator, func_num_args() === 2
+        );
+        return $this->parseWhere( $column, $operator, $value );
+    }
+
+    /**
+     * Add an "or where" clause to the query.
+     *
+     * @param \Closure|string|array $column
+     * @param mixed $operator
+     * @param mixed $value
+     * @return $this
+     */
+    public function orWhere( $column, $operator = null, $value = null )
+    {
+        [ $value, $operator ] = $this->prepareValueAndOperator(
+            $value, $operator, func_num_args() === 2
+        );
+        return $this->parseWhere( $column, $operator, $value, 'or' );
+    }
+
+    /**
+     * Add a raw where clause to the query.
+     *
+     * @param string $sql
+     * @param mixed $bindings
+     * @param string $boolean
+     * @return $this
+     */
+    public function whereRaw( $sql, $bindings = [], $boolean = 'and' )
+    {
+        $this->wheres[] = [ 'type' => 'raw', 'sql' => $sql, 'boolean' => $boolean ];
+
+        $this->addBinding( (array) $bindings, 'where' );
+
+        return $this;
+    }
+
+
+    /**
+     * $sql = "select * from posts where post_title=? and post_time >? order by post_id desc limit 0, 10";
+     * $postModel->query($sql, array('doitphp', '2010-5-4'))->fetchAll();
+     *
+     * 执行SQL语句
+     *
+     * 注：用于执行查询性的SQL语句（需要数据返回的情况）。
+     *
+     * @access public
+     *
+     * @param string $sql SQL语句
+     * @param array $params 待转义的参数值
+     *
+     * @return mixed
+     */
+    public function query( $sql )
+    {
+
+    }
+
+
+    /**
+     * 例二、 $sql = "update posts set post_title=? where id=5";
+     * $postModel->execute($sql, 'lucky tommy every day');
+     *
+     * 执行SQL语句
+     *
+     * 注：本方法用于无需返回信息的操作。如：更改、删除、添加数据信息(即：用于执行非查询SQL语句)
+     *
+     * @access public
+     *
+     * @param string $sql 所要执行的SQL语句
+     * @param array $params 待转义的数据。注：本参数支持字符串及数组，如果待转义的数据量在两个或两个以上请使用数组
+     *
+     * @return boolean
+     */
+    public function execute( $sql, $params = null )
+    {
+
+    }
+
+
+    public function getQuery()
+    {
+    }
+
+    public function __destruct()
+    {
+
     }
 }
