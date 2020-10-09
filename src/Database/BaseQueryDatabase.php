@@ -10,6 +10,7 @@
 
 namespace Tmac\Database;
 
+use think\db\Query;
 use Tmac\Database\Concern\BuilderQuery;
 use Tmac\Database\Concern\OrmQuery;
 use Tmac\Database\Concern\ParamsBind;
@@ -404,13 +405,18 @@ class BaseQueryDatabase
         if ( $column instanceof Closure ) {
             $subWhereSql = $this->parseClosureWhere( $this->newQuery(), $column, $boolean );
             if ( $subWhereSql ) {
-                $this->options[ 'where' ][] = new Raw( $subWhereSql );
+                $value = new Raw( $subWhereSql );
+                $type = 'raw';
+                $this->options[ 'where' ][] = compact(
+                    'type', 'value', 'boolean'
+                );
             }
             return $this;
         }
 
+        $type = 'basic';
         $this->options[ 'where' ][] = compact(
-            'column', 'operator', 'value', 'boolean'
+            'type', 'column', 'operator', 'value', 'boolean'
         );
 
         return $this;
@@ -458,15 +464,154 @@ class BaseQueryDatabase
      * @param string $boolean
      * @return $this
      */
-    public function whereRaw( $sql, $bindings = [], $boolean = 'and' )
+    public function whereRaw( string $sql, array $bind = [], string $boolean = 'and' )
     {
-        $this->wheres[] = [ 'type' => 'raw', 'sql' => $sql, 'boolean' => $boolean ];
+        if ( !empty( $bind ) ) {
+            $this->bindParams( $where, $bind );
+        }
 
-        $this->addBinding( (array) $bindings, 'where' );
+        $type = 'sql';
+        $value = new Raw( $sql );
+        $this->options[ 'where' ][] = compact(
+            'type', 'value', 'boolean'
+        );
 
         return $this;
     }
 
+    /**
+     * 指定表达式查询条件 OR
+     * @access public
+     * @param string $where 查询条件
+     * @param array $bind 参数绑定
+     * @return $this
+     */
+    public function orWhereRaw( string $sql, array $bind = [] )
+    {
+        return $this->whereRaw( $sql, $bind, 'OR' );
+    }
+
+    private function checkOrderByDirction( $direction = 'desc' )
+    {
+        $direction = strtoupper( $direction );
+        if ( !in_array( $direction, [ 'ASC', 'DESC' ] ) ) {
+            $direction = 'DESC';
+        }
+        return $direction;
+    }
+
+    /**
+     * Add a descending "order by" clause to the query.
+     *
+     * @param string $column
+     * @return $this
+     */
+    public function orderByDesc( $column )
+    {
+        return $this->orderBy( $column, 'desc' );
+    }
+
+
+    public function orderBy( $columns, $direction = 'asc' )
+    {
+        $direction = $this->checkOrderByDirction( $direction );
+        $this->options[ 'order' ] = '';
+        if ( empty( $columns ) ) {
+            return $this;
+        }
+        if ( is_string( $columns ) ) {
+            $this->options[ 'order' ] = "{$columns} {$direction}";
+        } elseif ( is_array( $columns ) ) {
+            $orderArray = [];
+            foreach ( $columns as $column => $order ) {
+                $order = $this->checkOrderByDirction( $order );
+                $orderArray[] = "{$column} {$order}";
+            }
+            $this->options[ 'order' ] = implode( ',', $orderArray );
+        }
+        return $this;
+    }
+
+
+    /**
+     * Add a raw "order by" clause to the query.
+     *
+     * @param string $sql
+     * @return $this
+     */
+    public function orderByRaw( $sql )
+    {
+        $this->options[ 'order' ] = $sql;
+        return $this;
+    }
+
+
+    /**
+     * Set the columns to be selected.
+     *
+     * @param  array|mixed  $columns
+     * @return $this
+     */
+    public function select($columns = ['*'])
+    {
+        $this->columns = [];
+        $this->bindings['select'] = [];
+        $columns = is_array($columns) ? $columns : func_get_args();
+        $this->options['field'] = implode(',', $columns);
+        return $this;
+    }
+
+    /**
+     * 指定查询数量
+     * @access public
+     * @param int $offset 起始位置
+     * @param int $length 查询数量
+     * @return $this
+     */
+    public function limit(int $offset, int $length = null)
+    {
+        $this->options['limit'] = $offset . ($length ? ',' . $length : '');
+
+        return $this;
+    }
+
+    /**
+     * 组装SQL语句的LIMIT语句
+     *
+     * 注:本方法与$this-&gt;limit()功能相类，区别在于:本方法便于分页,参数不同
+     *
+     * @access public
+     *
+     * @param integer $page 当前的页数
+     * @param integer $listNum 每页显示的数据行数
+     *
+     * @return object
+     */
+    public function page(int $page, int $listNum=10) {
+
+        //参数分析
+        $page    = (int)$page;
+        $listNum = (int)$listNum;
+
+        $page    = ($page < 1) ? 1 : $page;
+
+        $startId = (int)$listNum * ($page - 1);
+
+        return $this->limit($startId, $listNum);
+    }
+
+    /**
+     * 指定group查询
+     * @access public
+     * @param string|array $group GROUP
+     * @return $this
+     */
+    public function group($group)
+    {
+        $group = is_array($group) ? $group : func_get_args();
+        $this->options['group'] = implode(',', $group);
+        return $this;
+    }
 
     /**
      * $sql = "select * from posts where post_title=? and post_time >? order by post_id desc limit 0, 10";

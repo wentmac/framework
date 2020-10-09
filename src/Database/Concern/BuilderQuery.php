@@ -85,7 +85,7 @@ trait BuilderQuery
 
         if ( !empty( $whereClosure ) ) {
             $this->bind( $query->getBind( false ) );
-            $where = ' ' . $logic . ' ( ' . $whereClosure . ' )';
+            $where = ' '.$logic.'  ( ' . $whereClosure . ' )';
         }
 
         return $where ?? '';
@@ -107,7 +107,7 @@ trait BuilderQuery
         foreach ( $where as $val ) {
             $str = $this->parseWhereLogic( $val );
             $logic = $val[ 'boolean' ];
-            $whereStr .= empty( $whereStr ) ? substr( implode( ' ', $str ), strlen( $logic ) + 1 ) : implode( ' ', $str );
+            $whereStr .= empty( $whereStr ) ? substr( $str, strlen( $logic ) + 1 ) : $str;
         }
 
         return $whereStr;
@@ -117,29 +117,27 @@ trait BuilderQuery
      * 不同字段使用相同查询条件（AND）
      * @access protected
      * @param array $value 查询条件
-     * @return array
+     * @return string
      */
-    protected function parseWhereLogic( array $value ): array
+    protected function parseWhereLogic( $value ): string
     {
         $logic = $value[ 'boolean' ];
-        $where = [];
+        $where = '';
 
-        if ( $value instanceof Raw ) {
-            $where[] = ' ' . $logic . ' ( ' . $value . ' )';
-        }
-
-        if ( is_array( $value ) ) {
+        if ( $value['value'] instanceof Raw ) {
+            $where = $value['value']->getValue();
+        } elseif ( is_array( $value ) ) {
             if ( key( $value ) === 0 ) {
                 throw new Exception( 'where express error:' . var_export( $value, true ) );
             }
-            $where[] = " {$logic} {$value['column']}{$value['operator']}'{$value['value']}'";
+            $where = " {$logic} {$value['column']}{$value['operator']}'{$value['value']}'";
         } elseif ( true === $value ) {
-            $where[] = ' ' . $logic . ' 1 ';
+            $where = ' ' . $logic . ' 1 ';
         } elseif ( $value instanceof Closure ) {
             // 使用闭包查询
             $whereClosureStr = $this->parseClosureWhere( $this->newQuery(), $value, $logic );
             if ( $whereClosureStr ) {
-                $where[] = $whereClosureStr;
+                $where = $whereClosureStr;
             }
         }
 

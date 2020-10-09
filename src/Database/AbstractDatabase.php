@@ -610,5 +610,4 @@ abstract class AbstractDatabase implements DatabaseInterface
             $debug->setSQL( $sql, $success, $error );
         }
     }
-
 }

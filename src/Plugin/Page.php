@@ -131,6 +131,23 @@ class Page
     }
 
     /**
+     * 获取MySQL分页SQL的LIMIT语句
+     *
+     * @return string
+     */
+    public function getLimit($sqlType='')
+    {
+        $this->pages = ceil($this->total / $this->perpage);
+        //如果当前currentPage 大于 总pages的话就显示最后一页
+        $this->currentPage > $this->pages && $this->currentPage = $this->pages;
+        if ($sqlType == 'mssql') {
+            return ' BETWEEN ' . ($this->currentPage - 1) * $this->perpage . ' AND ' . $this->currentPage * $this->perpage;
+        } else {
+            return ($this->currentPage - 1) * $this->perpage;
+        }
+    }
+
+    /**
      * 获取url参数
      *
      */
