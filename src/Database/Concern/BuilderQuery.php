@@ -11,6 +11,21 @@ use Closure;
 
 trait BuilderQuery
 {
+
+
+    public function build()
+    {
+        $this->conditionBuilders[ 'select' ] = $this->buildSelect( $this->getOptions( 'field' ), $this->getOptions( 'distinct' ) );
+        $this->conditionBuilders[ 'from' ] = $this->buildFrom( $this->getOptions( 'table' ) );
+        $this->conditionBuilders[ 'join' ] = $this->buildjoin( $this->getOptions( 'where' ) );
+        $this->conditionBuilders[ 'where' ] = $this->buildWhere( $this->getOptions( 'where' ) );
+        $this->conditionBuilders[ 'group' ] = $this->buildOrderBy( $this->getOptions( 'group' ) );
+        $this->conditionBuilders[ 'order' ] = $this->buildOrderBy( $this->getOptions( 'order' ) );
+        $this->conditionBuilders[ 'limit' ] = $this->buildLimit( $this->getOptions( 'limit' ) );
+
+        return $this->getConn()->buildSelectSql( $this->conditionBuilders, $this->options );
+    }
+
     /**
      * Prepare the value and operator for a where clause.
      *
@@ -21,7 +36,7 @@ trait BuilderQuery
      *
      * @throws \InvalidArgumentException
      */
-    public function prepareValueAndOperator( $value, $operator, $useDefault = false )
+    protected function prepareValueAndOperator( $value, $operator, $useDefault = false )
     {
         if ( $useDefault ) {
             return [ $operator, '=' ];
@@ -79,16 +94,110 @@ trait BuilderQuery
     {
         $value( $query );
 
-        print_r( $query->options );
+        //print_r( $query->options );
 
-        $whereClosure = $this->buildWhere( $query->getOptions( 'where' ) ? : [] );
+        $whereClosure = $this->parseWhere( $query->getOptions( 'where' ) ? : [] );
 
         if ( !empty( $whereClosure ) ) {
             $this->bind( $query->getBind( false ) );
-            $where = ' '.$logic.'  ( ' . $whereClosure . ' )';
+            $where = ' ' . $logic . '  ( ' . $whereClosure . ' )';
         }
 
         return $where ?? '';
+    }
+
+
+    /**
+     * 解析table
+     * @param $table
+     * @return string
+     */
+    protected function buildFrom( $table ): string
+    {
+        if ( empty( $table ) ) {
+            $table = $this->getTable();
+        }
+        return 'FROM ' . $table;
+    }
+
+
+    /**
+     * 解析table
+     * @param $table
+     * @return string
+     */
+    protected function buildjoin( $table ): string
+    {
+        return '';
+        if ( empty( $table ) ) {
+            return $this->getTable();
+        }
+        return 'FROM ' . $table;
+    }
+
+
+    /**
+     * 解析field
+     * @param $table
+     * @return string
+     */
+    protected function buildSelect( $field, $distinct ): string
+    {
+        if ( empty( $field ) ) {
+            $field = '*';
+        }
+        $select = $distinct ? 'SELECT DISTINCT' : 'SELECT';
+        return $select . $this->separator . $field;
+    }
+
+    /**
+     * 解析 where
+     * @param $where
+     * @return string
+     */
+    protected function buildWhere( array $where ): string
+    {
+        $whereStr = $this->parseWhere( $where );
+        return empty( $whereStr ) ? '' : 'WHERE ' . $whereStr;
+    }
+
+    /**
+     * order by 语句编译解析
+     * @param $orderBy
+     * @return string
+     */
+    protected function buildOrderBy( $orderBy ): string
+    {
+        if ( empty( $orderBy ) ) {
+            return '';
+        }
+        return 'ORDER BY ' . $orderBy;
+    }
+
+    /**
+     * limit 语句编译解析
+     * @param $orderBy
+     * @return string
+     */
+    protected function buildLimit( $limit ): string
+    {
+        if ( empty( $limit ) ) {
+            return '';
+        }
+        return 'LIMIT ' . $limit;
+    }
+
+    /**
+     * group by 语句编译解析
+     * @param $group
+     * @return string
+     */
+    protected function buildGroupBy( $group ): string
+    {
+        if ( empty( $group ) ) {
+            return '';
+        }
+        return 'GROUP BY ' . $group;
     }
 
     /**
@@ -98,7 +207,7 @@ trait BuilderQuery
      * @param mixed $where 查询条件
      * @return string
      */
-    private function buildWhere( array $where ): string
+    protected function parseWhere( array $where ): string
     {
         if ( empty( $where ) ) {
             $where = [];
@@ -114,6 +223,22 @@ trait BuilderQuery
     }
 
     /**
+     * Compile a "where in" clause.
+     * @param $field
+     * @param $value
+     * @return string
+     */
+    protected function parseWhereIn( $field, $value, $not = false )
+    {
+        $type = $not ? 'NotIn' : 'In';
+        if ( !empty( $value ) ) {
+            return $this->wrap( $where[ 'column' ] ) . ' in (' . $this->parameterize( $where[ 'values' ] ) . ')';
+        }
+
+        return '0 = 1';
+    }
+
+    /**
      * 不同字段使用相同查询条件（AND）
      * @access protected
      * @param array $value 查询条件
@@ -121,16 +246,25 @@ trait BuilderQuery
      */
     protected function parseWhereLogic( $value ): string
     {
-        $logic = $value[ 'boolean' ];
+        $logic = strtoupper( $value[ 'boolean' ] );
+        $type = $value[ 'type' ];
         $where = '';
 
-        if ( $value['value'] instanceof Raw ) {
-            $where = $value['value']->getValue();
+        if ( $type == 'sql' && $value[ 'value' ] instanceof Raw ) {
+            $where = " {$logic} " . $value[ 'value' ]->getValue();
+        } elseif ( $type == 'raw' && $value[ 'value' ] instanceof Raw ) {
+            $where = $value[ 'value' ]->getValue();
         } elseif ( is_array( $value ) ) {
             if ( key( $value ) === 0 ) {
                 throw new Exception( 'where express error:' . var_export( $value, true ) );
             }
-            $where = " {$logic} {$value['column']}{$value['operator']}'{$value['value']}'";
+
+            $where = " {$logic} {$value['column']} {$value['operator']} ";
+            if ( $value[ 'value' ] instanceof TmacDbExpr ) {
+                $where .= "{$value['value']}";
+            } else {
+                $where .= "'{$value['value']}'";
+            }
         } elseif ( true === $value ) {
             $where = ' ' . $logic . ' 1 ';
         } elseif ( $value instanceof Closure ) {
@@ -144,4 +278,21 @@ trait BuilderQuery
         return $where;
     }
 
+    /**
+     * 去除查询参数
+     * @access public
+     * @param string $option 参数名 留空去除所有参数
+     * @return $this
+     */
+    protected function removeOption(string $option = '')
+    {
+        if ('' === $option) {
+            $this->options = [];
+            //todo $this->bind    = [];
+        } elseif (isset($this->options[$option])) {
+            unset($this->options[$option]);
+        }
+
+        return $this;
+    }
 }

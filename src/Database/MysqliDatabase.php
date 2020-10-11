@@ -295,6 +295,21 @@ class MysqliDatabase extends AbstractDatabase
         return mysqli_errno( $this->linkID ) . " : " . mysqli_error( $this->linkID );
     }
 
+    public function buildSelectSql( $conditionBuilders, $options )
+    {
+        $clauses = [
+            $conditionBuilders[ 'select' ],
+            $conditionBuilders[ 'from' ],
+            $conditionBuilders[ 'join' ],
+            $conditionBuilders[ 'where' ],
+            $conditionBuilders[ 'group' ],
+            $conditionBuilders[ 'order' ],
+            $conditionBuilders[ 'limit' ]
+        ];
+        $sql = implode( $this->separator, array_filter( $clauses ) );
+        return $sql;
+    }
+
     /**
      * 通过setWhere等方法来取查询的最终sql;
      * 主要是给UNION 或 UNION ALL用的  where IN($sql)

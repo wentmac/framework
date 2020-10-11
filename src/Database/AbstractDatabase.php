@@ -104,6 +104,20 @@ abstract class AbstractDatabase implements DatabaseInterface
 
     protected $config;
 
+    /**
+     * @var string the separator between different fragments of a SQL statement.
+     * Defaults to an empty space. This is mainly used by [[build()]] when generating a SQL statement.
+     */
+    protected $separator = ' ';
+
+    /**
+     * @return string
+     */
+    public function getSeparator(): string
+    {
+        return $this->separator;
+    }
+
     protected function __construct( ConfigInterface $config, Debug $debug, DriverCache $cache )
     {
         $this->config = $config;

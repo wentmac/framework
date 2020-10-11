@@ -37,10 +37,23 @@ class BaseQueryDatabase
     protected $joinString;
 
     /**
+     * @var string the separator between different fragments of a SQL statement.
+     * Defaults to an empty space. This is mainly used by [[build()]] when generating a SQL statement.
+     */
+    protected $separator = ' ';
+
+    /**
      * 当前查询参数
      * @var array
      */
     protected $options = [];
+
+
+    /**
+     * 当前查询参数
+     * @var array
+     */
+    protected $conditionBuilders = [];
     /**
      * All of the available clause operators.
      *
@@ -64,6 +77,7 @@ class BaseQueryDatabase
         $this->conn = $connection->getInstance();
         $this->table = $table;
         $this->primaryKey = $primaryKey;
+        $this->separator = $this->conn->getSeparator();
     }
 
     /**
@@ -75,7 +89,6 @@ class BaseQueryDatabase
     {
         return new static( $this->driverDatabase, $this->table, $this->primaryKey );
     }
-
 
     public function getConn()
     {
@@ -231,7 +244,9 @@ class BaseQueryDatabase
         if ( !empty( $id ) ) {
             $this->pk = $id;
         }
-        $sql = $this->getConn()->getInfoSqlByPk( $this );
+        $this->removeOption();
+        $this->where( $this->getPrimaryKey(), $this->pk );
+        $sql = $this->build();
         $res = $this->getConn()->getRowObject( $sql );
         return $res;
     }
@@ -243,6 +258,9 @@ class BaseQueryDatabase
     public function getInfoByWhere()
     {
         $sql = $this->getConn()->getInfoSqlByWhere( $this );
+        $this->removeOption();
+        $this->where( $this->getPrimaryKey(), $this->pk );
+        $sql = $this->build();
         $res = $this->getConn()->getRowObject( $sql );
         return $res;
     }
@@ -390,7 +408,7 @@ class BaseQueryDatabase
     /**
      * where解析
      */
-    private function parseWhere( $column, $operator = null, $value = null, $boolean = 'and' )
+    private function parseWhereExp( $column, $operator = null, $value = null, $boolean = 'and' )
     {
         // If the column is an array, we will assume it is an array of key-value pairs
         // and can add them each as a where clause. We will maintain the boolean we
@@ -414,10 +432,26 @@ class BaseQueryDatabase
             return $this;
         }
 
+        //如果where的查询值是数组，就转成逗号分割的字符串，如果是默认=于操作的，改成in
+        if ( is_array( $value ) ) {
+            $value = new TmacDbExpr( '(' . implode( ',', $value ) . ')' );
+            $operator = $operator === '=' ? 'IN' : $operator;
+        }
+
         $type = 'basic';
         $this->options[ 'where' ][] = compact(
             'type', 'column', 'operator', 'value', 'boolean'
         );
+
+        return $this;
+    }
+
+    public function from( $table )
+    {
+        if ( is_array( $table ) ) {
+            $table = implode( ',', $table );
+        }
+        $this->options[ 'table' ] = $table;
 
         return $this;
     }
@@ -428,7 +462,7 @@ class BaseQueryDatabase
             $value, $operator, func_num_args() === 2
         );
         $this->options[ 'where' ] = [];//初始化where数组
-        return $this->parseWhere( $column, $operator, $value );
+        return $this->parseWhereExp( $column, $operator, $value );
     }
 
 
@@ -437,7 +471,7 @@ class BaseQueryDatabase
         [ $value, $operator ] = $this->prepareValueAndOperator(
             $value, $operator, func_num_args() === 2
         );
-        return $this->parseWhere( $column, $operator, $value );
+        return $this->parseWhereExp( $column, $operator, $value );
     }
 
     /**
@@ -453,7 +487,7 @@ class BaseQueryDatabase
         [ $value, $operator ] = $this->prepareValueAndOperator(
             $value, $operator, func_num_args() === 2
         );
-        return $this->parseWhere( $column, $operator, $value, 'or' );
+        return $this->parseWhereExp( $column, $operator, $value, 'or' );
     }
 
     /**
@@ -549,15 +583,15 @@ class BaseQueryDatabase
     /**
      * Set the columns to be selected.
      *
-     * @param  array|mixed  $columns
+     * @param array|mixed $columns
      * @return $this
      */
-    public function select($columns = ['*'])
+    public function select( $columns = [ '*' ] )
     {
         $this->columns = [];
-        $this->bindings['select'] = [];
-        $columns = is_array($columns) ? $columns : func_get_args();
-        $this->options['field'] = implode(',', $columns);
+        $this->bindings[ 'select' ] = [];
+        $columns = is_array( $columns ) ? $columns : func_get_args();
+        $this->options[ 'field' ] = implode( ',', $columns );
         return $this;
     }
 
@@ -568,10 +602,11 @@ class BaseQueryDatabase
      * @param int $length 查询数量
      * @return $this
      */
-    public function limit(int $offset, int $length = null)
+    public function limit( int $offset, int $length = null )
     {
-        $this->options['limit'] = $offset . ($length ? ',' . $length : '');
-
+        $this->options[ 'limit' ] = $offset . ( $length ? ',' . $length : '' );
+        $this->options[ 'offset' ] = $offset;
+        $this->options[ 'length' ] = $length;
         return $this;
     }
 
@@ -587,17 +622,18 @@ class BaseQueryDatabase
      *
      * @return object
      */
-    public function page(int $page, int $listNum=10) {
+    public function page( int $page, int $listNum = 10 )
+    {
 
         //参数分析
-        $page    = (int)$page;
-        $listNum = (int)$listNum;
+        $page = (int) $page;
+        $listNum = (int) $listNum;
 
-        $page    = ($page < 1) ? 1 : $page;
+        $page = ( $page < 1 ) ? 1 : $page;
 
-        $startId = (int)$listNum * ($page - 1);
+        $startId = (int) $listNum * ( $page - 1 );
 
-        return $this->limit($startId, $listNum);
+        return $this->limit( $startId, $listNum );
     }
 
     /**
@@ -606,10 +642,10 @@ class BaseQueryDatabase
      * @param string|array $group GROUP
      * @return $this
      */
-    public function group($group)
+    public function group( $group )
     {
-        $group = is_array($group) ? $group : func_get_args();
-        $this->options['group'] = implode(',', $group);
+        $group = is_array( $group ) ? $group : func_get_args();
+        $this->options[ 'group' ] = implode( ',', $group );
         return $this;
     }
 
