@@ -699,4 +699,29 @@ class BaseQueryDatabase
     {
 
     }
+
+    /**
+     * todo 
+     * 查询缓存
+     * @access public
+     * @param mixed             $key    缓存key
+     * @param integer|\DateTime $expire 缓存有效期
+     * @param string|array      $tag    缓存标签
+     * @return $this
+     */
+    public function cache($key = true, $expire = null, $tag = null)
+    {
+        if (false === $key || !$this->getConnection()->getCache()) {
+            return $this;
+        }
+
+        if ($key instanceof \DateTimeInterface || $key instanceof \DateInterval || (is_int($key) && is_null($expire))) {
+            $expire = $key;
+            $key    = true;
+        }
+
+        $this->options['cache'] = [$key, $expire, $tag];
+
+        return $this;
+    }
 }

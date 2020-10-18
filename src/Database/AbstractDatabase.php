@@ -624,4 +624,31 @@ abstract class AbstractDatabase implements DatabaseInterface
             $debug->setSQL( $sql, $success, $error );
         }
     }
+
+    /**
+     * 执行数据库事务
+     * @access public
+     * @param callable $callback 数据操作方法回调
+     * @return mixed
+     * @throws \Exception
+     * @throws \Throwable
+     */
+    public function transaction( callable $callback )
+    {
+        $this->startTrans();
+
+        try {
+            $result = call_user_func( $callback, $this );
+            $this->commit();
+            return $result;
+        } catch ( \Exception $e ) {
+            $this->rollback();
+            throw $e;
+        } catch ( \Throwable $e ) {
+            $this->rollback();
+            throw $e;
+        }
+    }
+
+    //todo function transactionXa
 }
