@@ -298,13 +298,18 @@ class MysqliDatabase extends AbstractDatabase
     public function buildSelectSql( $conditionBuilders, $options )
     {
         $clauses = [
+            $conditionBuilders[ 'distinct' ],
             $conditionBuilders[ 'select' ],
             $conditionBuilders[ 'from' ],
             $conditionBuilders[ 'join' ],
             $conditionBuilders[ 'where' ],
             $conditionBuilders[ 'group' ],
+            $conditionBuilders[ 'having' ],
             $conditionBuilders[ 'order' ],
-            $conditionBuilders[ 'limit' ]
+            $conditionBuilders[ 'limit' ],
+            $conditionBuilders[ 'union' ],
+            $conditionBuilders[ 'lock' ],
+            $conditionBuilders[ 'force' ]
         ];
         $sql = implode( $this->separator, array_filter( $clauses ) );
         return $sql;
@@ -319,7 +324,7 @@ class MysqliDatabase extends AbstractDatabase
      *
      * @return type
      */
-    public function getSqlByWhere( BaseQueryDatabase $query )
+    public function getSqlByWhere( QueryBuilderDatabase $query )
     {
         $sql = "SELECT ";
         if ( $query->getTop() != null ) {
@@ -350,7 +355,7 @@ class MysqliDatabase extends AbstractDatabase
      * 通过主键取数据库信息
      * @return type
      */
-    public function getInfoSqlByPk( BaseQueryDatabase $query )
+    public function getInfoSqlByPk( QueryBuilderDatabase $query )
     {
         $sql = "SELECT {$this->getField()} "
             . "FROM {$this->getTable()} "
@@ -362,7 +367,7 @@ class MysqliDatabase extends AbstractDatabase
      * 通过$where条件取数据库信息
      * @return type
      */
-    public function getInfoSqlByWhere( BaseQueryDatabase $query )
+    public function getInfoSqlByWhere( QueryBuilderDatabase $query )
     {
         $sql = "SELECT {$query->getField()} "
             . "FROM {$query->getTable()} ";
@@ -380,7 +385,7 @@ class MysqliDatabase extends AbstractDatabase
      * 通过$where条件取总数
      * @return integer
      */
-    public function getCountSqlByWhere( BaseQueryDatabase $query )
+    public function getCountSqlByWhere( QueryBuilderDatabase $query )
     {
         $sql_count = "SELECT COUNT({$query->getCountField()}) FROM {$query->getTable()} ";
         if ( $query->getWhere() !== null ) {
@@ -393,7 +398,7 @@ class MysqliDatabase extends AbstractDatabase
      * 通过主键删除一条记录{删除数据的操作请慎用}
      * @return type
      */
-    public function getDeleteSqlByPk( BaseQueryDatabase $query )
+    public function getDeleteSqlByPk( QueryBuilderDatabase $query )
     {
         $sql = "DELETE FROM {$query->getTable()} "
             . "WHERE {$query->getPrimaryKey()}={$query->getPk()}";
@@ -404,7 +409,7 @@ class MysqliDatabase extends AbstractDatabase
      * 通过$where条件删除N条记录{删除数据的操作请慎用}
      * @return type
      */
-    public function getDeleteSqlByWhere( BaseQueryDatabase $query )
+    public function getDeleteSqlByWhere( QueryBuilderDatabase $query )
     {
         $sql = "DELETE FROM {$query->getTable()} "
             . "WHERE {$query->getWhere()}";

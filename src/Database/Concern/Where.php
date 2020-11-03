@@ -5,7 +5,7 @@ namespace Tmac\Database\Concern;
 
 use Tmac\Database\TmacDbExpr;
 
-trait WhereQuery
+trait Where
 {
 
     public function findByNot( array $criteria, array $orderBy = null, $limit = null, $offset = null )
@@ -43,7 +43,7 @@ trait WhereQuery
             ->getResult();
     }
     
-    public function findByNot($field, $value)
+    public function findByNot1($field, $value)
     {
         $qb = $this->createQueryBuilder('a');
         $qb->where($qb->expr()->not($qb->expr()->eq('a.'.$field, '?1')));

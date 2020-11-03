@@ -10,16 +10,19 @@
 
 namespace Tmac\Database;
 
-use think\db\Query;
-use Tmac\Database\Concern\BuilderQuery;
-use Tmac\Database\Concern\OrmQuery;
+use Tmac\Database\Concern\AggregateQuery;
+use Tmac\Database\Concern\Builder;
+use Tmac\Database\Concern\Orm;
+use Tmac\Database\Concern\Query;
 use Tmac\Database\Concern\ParamsBind;
 use Closure;
 
-class BaseQueryDatabase
+class QueryBuilderDatabase
 {
-    use OrmQuery;
-    use BuilderQuery;
+    use Orm;
+    use Builder;
+    use Query;
+    use AggregateQuery;
     use ParamsBind;
 
     protected $driverDatabase;
@@ -85,7 +88,7 @@ class BaseQueryDatabase
      * @access public
      * @return BaseQuery
      */
-    public function newQuery(): BaseQueryDatabase
+    public function newQuery(): QueryBuilderDatabase
     {
         return new static( $this->driverDatabase, $this->table, $this->primaryKey );
     }
@@ -649,6 +652,92 @@ class BaseQueryDatabase
         return $this;
     }
 
+
+    /**
+     * 指定having查询
+     * @access public
+     * @param string $having having
+     * @return $this
+     */
+    public function having( string $having )
+    {
+        $this->options[ 'having' ] = $having;
+        return $this;
+    }
+
+    /**
+     * 指定distinct查询
+     * @access public
+     * @param bool $distinct 是否唯一
+     * @return $this
+     */
+    public function distinct( bool $distinct = true )
+    {
+        $this->options[ 'distinct' ] = $distinct;
+        return $this;
+    }
+
+    /**
+     * 查询SQL组装 union
+     * @access public
+     * @param mixed $union UNION
+     * @param boolean $all 是否适用UNION ALL
+     * @return $this
+     */
+    public function union( $union, bool $all = false )
+    {
+        $this->options[ 'union' ][ 'type' ] = $all ? 'UNION ALL' : 'UNION';
+
+        if ( is_array( $union ) ) {
+            $this->options[ 'union' ] = array_merge( $this->options[ 'union' ], $union );
+        } else {
+            $this->options[ 'union' ][] = $union;
+        }
+
+        return $this;
+    }
+
+    /**
+     * 查询SQL组装 union all
+     * @access public
+     * @param mixed $union UNION数据
+     * @return $this
+     */
+    public function unionAll( $union )
+    {
+        return $this->union( $union, true );
+    }
+
+    /**
+     * 指定强制索引
+     * @access public
+     * @param string $force 索引名称
+     * @return $this
+     */
+    public function force( string $force )
+    {
+        $this->options[ 'force' ] = $force;
+        return $this;
+    }
+
+    /**
+     * 指定查询lock
+     * @access public
+     * @param bool|string $lock 是否lock
+     * @return $this
+     */
+    public function lock( $lock = false )
+    {
+        $this->options[ 'lock' ] = $lock;
+
+        if ( $lock ) {
+            $this->getConn()->setMaster( true );
+        }
+
+        return $this;
+    }
+
+
     /**
      * $sql = "select * from posts where post_title=? and post_time >? order by post_id desc limit 0, 10";
      * $postModel->query($sql, array('doitphp', '2010-5-4'))->fetchAll();
@@ -701,26 +790,26 @@ class BaseQueryDatabase
     }
 
     /**
-     * todo 
+     * todo
      * 查询缓存
      * @access public
-     * @param mixed             $key    缓存key
+     * @param mixed $key 缓存key
      * @param integer|\DateTime $expire 缓存有效期
-     * @param string|array      $tag    缓存标签
+     * @param string|array $tag 缓存标签
      * @return $this
      */
-    public function cache($key = true, $expire = null, $tag = null)
+    public function cache( $key = true, $expire = null, $tag = null )
     {
-        if (false === $key || !$this->getConnection()->getCache()) {
+        if ( false === $key || !$this->getConnection()->getCache() ) {
             return $this;
         }
 
-        if ($key instanceof \DateTimeInterface || $key instanceof \DateInterval || (is_int($key) && is_null($expire))) {
+        if ( $key instanceof \DateTimeInterface || $key instanceof \DateInterval || ( is_int( $key ) && is_null( $expire ) ) ) {
             $expire = $key;
-            $key    = true;
+            $key = true;
         }
 
-        $this->options['cache'] = [$key, $expire, $tag];
+        $this->options[ 'cache' ] = [ $key, $expire, $tag ];
 
         return $this;
     }

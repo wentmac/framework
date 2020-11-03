@@ -4,26 +4,52 @@ declare ( strict_types=1 );
 namespace Tmac\Database\Concern;
 
 use Tmac\Database\BaseQueryDatabase;
+use Tmac\Database\QueryBuilderDatabase;
 use Tmac\Database\Raw;
 use Tmac\Database\TmacDbExpr;
 use Exception;
 use Closure;
 
-trait BuilderQuery
+trait Builder
 {
 
 
     public function build()
     {
+        $this->conditionBuilders[ 'distinct' ] = $this->buildDistinct( $this->getOptions( 'distinct' ) );
         $this->conditionBuilders[ 'select' ] = $this->buildSelect( $this->getOptions( 'field' ), $this->getOptions( 'distinct' ) );
         $this->conditionBuilders[ 'from' ] = $this->buildFrom( $this->getOptions( 'table' ) );
         $this->conditionBuilders[ 'join' ] = $this->buildjoin( $this->getOptions( 'where' ) );
         $this->conditionBuilders[ 'where' ] = $this->buildWhere( $this->getOptions( 'where' ) );
-        $this->conditionBuilders[ 'group' ] = $this->buildOrderBy( $this->getOptions( 'group' ) );
+        $this->conditionBuilders[ 'group' ] = $this->buildGroupBy( $this->getOptions( 'group' ) );
+        $this->conditionBuilders[ 'having' ] = $this->buildHaving( $this->getOptions( 'having' ) );
         $this->conditionBuilders[ 'order' ] = $this->buildOrderBy( $this->getOptions( 'order' ) );
         $this->conditionBuilders[ 'limit' ] = $this->buildLimit( $this->getOptions( 'limit' ) );
+        $this->conditionBuilders[ 'union' ] = $this->buildUnion( $this->getOptions( 'union' ) );
+        $this->conditionBuilders[ 'lock' ] = $this->buildLock( $this->getOptions( 'lock' ) );
+        $this->conditionBuilders[ 'force' ] = $this->buildForce( $this->getOptions( 'force' ) );
 
         return $this->getConn()->buildSelectSql( $this->conditionBuilders, $this->options );
+    }
+
+    /**
+     * 得到某个字段的值
+     * @access public
+     * @param string $field 字段名
+     * @param mixed $default 默认值
+     * @return string
+     */
+    public function value( string $field, $default = null )
+    {
+        if ( $this->getOptions( 'field' ) !== null ) {
+            $this->options[ 'field' ] = $field;
+        }
+        $sql = $this->build();
+        $result = $this->getConn()->getOne( $sql );
+        if ( $result == false ) {
+            return '';
+        }
+        return $result;
     }
 
     /**
@@ -90,7 +116,7 @@ trait BuilderQuery
      * @param string $logic Logic
      * @return string
      */
-    protected function parseClosureWhere( BaseQueryDatabase $query, Closure $value, string $logic )
+    protected function parseClosureWhere( QueryBuilderDatabase $query, Closure $value, string $logic )
     {
         $value( $query );
 
@@ -151,6 +177,29 @@ trait BuilderQuery
     }
 
     /**
+     * distinct分析
+     *
+     * ->distinct('id')->
+     * ->distinct(true)->select('id')
+     * ->select('id',true)
+     *
+     * @access protected
+     * @param Query $query 查询对象
+     * @param mixed $distinct
+     * @return string
+     */
+    protected function buildDistinct( $field ): string
+    {
+        if ( !empty( $field ) ) {
+            $field !== true && $this->select( $field );
+            return 'DISTINCT ';
+        } else {
+            return '';
+        }
+    }
+
+
+    /**
      * 解析 where
      * @param $where
      * @return string
@@ -188,6 +237,73 @@ trait BuilderQuery
     }
 
     /**
+     * union分析
+     * @access protected
+     * @param array $union
+     * @return string
+     */
+    protected function buildUnion( array $union ): string
+    {
+        if ( empty( $union ) ) {
+            return '';
+        }
+
+        $type = $union[ 'type' ];
+        unset( $union[ 'type' ] );
+
+        foreach ( $union as $u ) {
+            if ( $u instanceof Closure ) {
+                $sql[] = $type . ' ' . $this->parseClosureWhere( $this->newQuery(), $u );
+            } elseif ( is_string( $u ) ) {
+                $sql[] = $type . ' ( ' . $u . ' )';
+            }
+        }
+
+        return implode( ' ', $sql );
+    }
+
+    /**
+     * index分析，可在操作链中指定需要强制使用的索引
+     * @access protected
+     * @param Query $query 查询对象
+     * @param mixed $index
+     * @return string
+     */
+    protected function buildForce( $index ): string
+    {
+        if ( empty( $index ) ) {
+            return '';
+        }
+
+        if ( is_array( $index ) ) {
+            $index = join( ',', $index );
+        }
+
+        return sprintf( "FORCE INDEX ( %s ) ", $index );
+    }
+
+
+    /**
+     * 设置锁机制
+     * @access protected
+     * @param Query $query 查询对象
+     * @param bool|string $lock
+     * @return string
+     */
+    protected function buildLock( $lock = false ): string
+    {
+        if ( is_bool( $lock ) ) {
+            return $lock ? 'FOR UPDATE ' : '';
+        }
+
+        if ( is_string( $lock ) && !empty( $lock ) ) {
+            return trim( $lock ) . ' ';
+        } else {
+            return '';
+        }
+    }
+
+    /**
      * group by 语句编译解析
      * @param $group
      * @return string
@@ -201,9 +317,19 @@ trait BuilderQuery
     }
 
     /**
+     * group by 语句编译解析
+     * @param $having
+     * @return string
+     */
+    protected function buildHaving( $having ): string
+    {
+        return !empty( $having ) ? 'HAVING ' . $having : '';
+    }
+
+    /**
      * 生成查询条件SQL
      * @access public
-     * @param BaseQueryDatabase $query 查询对象
+     * @param QueryBuilderDatabase $query 查询对象
      * @param mixed $where 查询条件
      * @return string
      */
@@ -284,13 +410,13 @@ trait BuilderQuery
      * @param string $option 参数名 留空去除所有参数
      * @return $this
      */
-    protected function removeOption(string $option = '')
+    protected function removeOption( string $option = '' )
     {
-        if ('' === $option) {
+        if ( '' === $option ) {
             $this->options = [];
             //todo $this->bind    = [];
-        } elseif (isset($this->options[$option])) {
-            unset($this->options[$option]);
+        } elseif ( isset( $this->options[ $option ] ) ) {
+            unset( $this->options[ $option ] );
         }
 
         return $this;

@@ -11,7 +11,7 @@
 namespace Tmac\Database;
 
 
-class EntityRepositoryDatabase extends BaseQueryDatabase
+class EntityRepositoryDatabase extends QueryBuilderDatabase
 {
 
     public function __construct( DriverDatabase $connection, $table_name, $primaryKey )

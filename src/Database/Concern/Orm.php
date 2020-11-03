@@ -5,7 +5,7 @@ namespace Tmac\Database\Concern;
 
 use Tmac\Database\TmacDbExpr;
 
-trait OrmQuery
+trait Orm
 {
     /**
      * Finds an entity by its primary key / identifier.
@@ -16,6 +16,12 @@ trait OrmQuery
     public function find( $id )
     {
         return $this->getInfoByPk( $id );
+    }
+
+
+    public function findColumn( array $criteria, array $orderBy = null )
+    {
+
     }
 
     /**
@@ -53,19 +59,6 @@ trait OrmQuery
         return $this->getListByWhere();
     }
 
-    /**
-     * Counts entities by a set of criteria.
-     *
-     * @param array $criteria
-     *
-     * @return int The cardinality of the objects that match the given criteria.
-     * @todo Add this method to `ObjectRepository` interface in the next major release
-     *
-     */
-    public function count( array $criteria )
-    {
-        return $this->_em->getUnitOfWork()->getEntityPersister( $this->_entityName )->count( $criteria );
-    }
 
     /**
      * Finds a single entity by a set of criteria.
