@@ -12,7 +12,7 @@ use Tmac\Contract\ConfigInterface;
 use Tmac\Contract\DatabaseInterface;
 use Tmac\Debug;
 
-abstract class AbstractDatabase implements DatabaseInterface
+abstract class PDOConnection implements DatabaseInterface
 {
 
     /**
@@ -453,7 +453,7 @@ abstract class AbstractDatabase implements DatabaseInterface
      * @return <type>
      */
     public function autoInsertReturn( $table, $field_values )
-    { 
+    {
         $field_names = $this->getCol( 'DESC ' . $table );
 
         $sql = '';

@@ -63,7 +63,8 @@ class DriverDatabase
             case 'mysql':
                 return new MysqlDatabase( $config, $debug, $cache );
             case 'mysqli':
-                return new MysqliDatabase( $config, $debug, $cache );
+                //return new MysqliDatabase( $config, $debug, $cache );
+                return new MySqlConnector( $config, $debug, $cache );
             case 'mssql':
                 return new MssqlDatabase( $config, $debug, $cache );
         }

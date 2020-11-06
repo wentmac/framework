@@ -15,7 +15,14 @@ trait Orm
      */
     public function find( $id )
     {
-        return $this->getInfoByPk( $id );
+        if ( !empty( $id ) ) {
+            $this->pk = $id;
+        }
+        $this->removeOption();
+        $this->where( $this->getPrimaryKey(), $this->pk );
+        $sql = $this->build();
+        $res = $this->getConn()->getRowObject( $sql );
+        return $res;
     }
 
 
