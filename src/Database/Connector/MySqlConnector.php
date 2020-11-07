@@ -26,82 +26,32 @@ class MySqlConnector extends PDOConnection
     }
 
     /**
-     * 初始化数据库连接
-     * @param bool $master 是否主服务器
+     * 解析pdo连接的dsn信息
+     * @access protected
+     * @param array $config 连接信息
+     * @return string
      */
-    public function initConnect( bool $master = true )
+    protected function parseDsn( array $config ): string
     {
-        $config = $this->config[ 'database.mysql' ];
-        if ( $config[ 'deploy' ] ) {
-            if ( $master ) {
-                if ( !$this->linkWrite ) {
-                    $this->linkWrite = $this->connectMulti( true );
-                }
-                $this->linkID = $this->linkWrite;
-            } else {
-                if ( !$this->linkRead ) {
-                    $this->linkRead = $this->connectMulti( false );
-                }
-                $this->linkID = $this->linkRead;
-            }
+        if ( !empty( $config[ 'socket' ] ) ) {
+            $dsn = 'mysql:unix_socket=' . $config[ 'socket' ];
+        } elseif ( !empty( $config[ 'hostport' ] ) ) {
+            $dsn = 'mysql:host=' . $config[ 'hostname' ] . ';port=' . $config[ 'port' ];
         } else {
-            //连接数据库
-            $this->linkID = $this->connect( $this->config[ 'database.mysql' ] );
+            $dsn = 'mysql:host=' . $config[ 'hostname' ];
+        }
+        $dsn .= ';dbname=' . $config[ 'database' ];
+
+        if ( !empty( $config[ 'charset' ] ) ) {
+            $dsn .= ';charset=' . $config[ 'charset' ];
         }
 
-        if ( $this->linkID ) {
-            //设置编码与sql_mode
-            mysqli_query( $this->linkID, "SET NAMES '{$this->config[ 'database.mysql.charset' ]}', sql_mode=''" );
-        } else {
-            throw new TmacException( '无法连接到read数据库:' . $this->getError() );
-        }
-
+        return $dsn;
     }
 
-
-    /**
-     * 连接数据库
-     *
-     * @return bool
-     * @global array $TmacConfig
-     */
-    public function connect( $config )
+    protected function supportSavepoint(): bool
     {
-        $fun = $config[ 'pconnect' ] ? 'mysqli_pconnect' : 'mysqli_connect';
-        return $fun( $config[ 'hostname' ], $config[ 'username' ], $config[ 'password' ], $config[ 'database' ], $config[ 'port' ] );
-    }
-
-
-    /**
-     * 连接主/从库
-     * @return bool
-     */
-    public function connectMulti( bool $master = false )
-    {
-        $config = $this->config[ 'database.mysql' ];
-        if ( !$config[ 'deploy' ] ) {
-            //没有配置分布式（主从，读写分离）
-            return true;
-        }
-
-        if ( $master ) {
-            $deploy_config = $config[ 'write' ];
-        } else {
-            $deploy_config = $config[ 'read' ];
-        }
-
-        if ( empty( $deploy_config ) ) {
-            return true;
-        }
-        // 如果数组即多个读库，那么通过随机函数array_rand()挑一个，默认取第一个
-        if ( isset( $deploy_config ) && is_array( $deploy_config ) ) {
-            $config_choose = count( $deploy_config ) > 1
-                ? array_rand( $deploy_config )
-                : $deploy_config[ 0 ];
-            $config = array_merge( $config, $config_choose );
-        }
-        //连接数据库
-        return $this->connect( $config );
+        return true;
     }
 
     /**
@@ -196,56 +146,6 @@ class MySqlConnector extends PDOConnection
     public function fetch_row( $result )
     {
         return mysqli_fetch_row( $result );
-    }
-
-    /**
-     * 开始事务
-     *
-     * @return bool
-     */
-    public function startTrans()
-    {
-        if ( !$this->linkID ) {
-            return false;
-        }
-        ++$this->trans_level;
-        if ( $this->trans_level == 1 && !$this->trans_status ) { //保证最外层的transtion才start
-            $this->trans_status = $this->execute( 'START TRANSACTION' );
-        }
-        return $this->trans_status;
-    }
-
-    /**
-     * 提交事务
-     *
-     * @return bool
-     */
-    public function commit()
-    {
-        if ( $this->trans_level == 1 ) { //如果当前事务只有一层时 才能提交
-            $this->execute( 'COMMIT' );
-            $this->trans_status = false;    //事务回滚完毕后 关闭事务的开始状态
-        }
-        --$this->trans_level;
-        return true;
-    }
-
-    /**
-     * 回滚事务
-     *
-     * @return bool
-     */
-    public function rollback()
-    {
-        if ( $this->trans_level == 1 ) { //如果当前事务只有一层时 才能回滚
-            $this->execute( 'ROLLBACK' );
-            $this->trans_status = false; //事务回滚完毕后 关闭事务的开始状态
-            if ( $this->success === FALSE ) {
-                $this->success = TRUE;
-            }
-        }
-        --$this->trans_level;
-        return true;
     }
 
     /**
