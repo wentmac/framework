@@ -21,6 +21,57 @@ abstract class PDOConnection implements DatabaseInterface
 {
 
     /**
+     * 数据库连接参数配置
+     * @var array
+     */
+    protected $dbConnectionConfig = [
+        // 数据库类型
+        'type' => '',
+        // 服务器地址
+        'hostname' => '',
+        // 数据库名
+        'database' => '',
+        // 用户名
+        'username' => '',
+        // 密码
+        'password' => '',
+        // 端口
+        'port' => '',
+        // 连接dsn
+        'dsn' => '',
+        // 数据库连接参数
+        'params' => [],
+        // 数据库编码默认采用utf8
+        'charset' => 'utf8',
+        // 数据库表前缀
+        'prefix' => '',
+        // 数据库部署方式:0 集中式(单一服务器),1 分布式(主从服务器)
+        'deploy' => 0,
+        // 数据库读写是否分离 主从式有效
+        'rw_separate' => false,
+        // 读写分离后 主服务器数量
+        'master_num' => 1,
+        // 指定从服务器序号
+        'slave_no' => '',
+        // 模型写入后自动读取主服务器
+        'read_master' => false,
+        // 是否严格检查字段是否存在
+        'fields_strict' => true,
+        // 开启字段缓存
+        'fields_cache' => false,
+        // 监听SQL
+        'trigger_sql' => true,
+        // Builder类
+        'builder' => '',
+        // 是否需要断线重连
+        'break_reconnect' => false,
+        // 断线标识字符串
+        'break_match_str' => [],
+        // 字段缓存路径
+        'schema_cache_path' => '',
+    ];
+
+    /**
      * PDO操作实例
      * @var PDOStatement
      */
@@ -137,7 +188,6 @@ abstract class PDOConnection implements DatabaseInterface
 
     protected $config;
     protected $dbConfig;
-    protected $dbConnectionConfig;
 
     /**
      * @var string the separator between different fragments of a SQL statement.
@@ -196,7 +246,9 @@ abstract class PDOConnection implements DatabaseInterface
         $this->dbConfig = $config[ 'database' ];
 
         $default_connection = $config[ 'database.default' ];
-        $this->dbConnectionConfig = $this->dbConfig[ $default_connection ];
+        if ( !empty( $this->dbConfig[ $default_connection ] ) ) {
+            $this->dbConnectionConfig = array_merge( $this->dbConnectionConfig, $this->dbConfig[ $default_connection ] );
+        }
 
         $this->debug = $debug;
         $this->cache = $cache;
@@ -432,19 +484,61 @@ abstract class PDOConnection implements DatabaseInterface
 
 
     /**
+     * 执行一条SQL查询语句 返回资源标识符  返回数据集
+     * @access public
+     * @param mixed $sql sql指令
+     * @param array $bind 参数绑定
+     * @return array
+     * @throws BindParamException
+     * @throws \PDOException
+     * @throws \Exception
+     * @throws \Throwable
+     */
+    public function query( $sql, array $binds = [], array $types = [] ): array
+    {
+        $this->getPDOStatement( $sql, $binds, $types, $master = false );
+
+        $resultSet = $this->PDOStatement->fetch( $this->fetchType );
+
+        return $resultSet;
+    }
+
+
+    /**
+     * 执行一条SQL语句 返回似乎执行成功 update insert delete
+     * @access public
+     * @param mixed $sql sql指令
+     * @param array $bind 参数绑定
+     * @return array
+     * @throws BindParamException
+     * @throws \PDOException
+     * @throws \Exception
+     * @throws \Throwable
+     */
+    public function execute( $sql, array $binds = [], array $types = [] ): int
+    {
+        $this->getPDOStatement( $sql, $binds, $types, $master = true );
+
+        if ( !empty( $this->config[ 'deploy' ] ) && !empty( $this->config[ 'read_master' ] ) ) {
+            $this->readMaster = true;
+        }
+        $this->numRows = $this->PDOStatement->rowCount();
+        return $this->numRows;
+    }
+
+    /**
      * 执行查询但只返回PDOStatement对象
      * @access public
      * @param string $sql sql指令
      * @param array $bind 参数绑定
      * @param bool $master 是否在主服务器读操作
-     * @param bool $procedure 是否为存储过程调用
      * @return PDOStatement
      * @throws BindParamException
      * @throws \PDOException
      * @throws \Exception
      * @throws \Throwable
      */
-    protected function getPDOStatement( string $sql, array $params = [], $types = [], bool $master = false, bool $procedure = false ): PDOStatement
+    protected function getPDOStatement( string $sql, array $params = [], $types = [], bool $master = false ): PDOStatement
     {
         $this->initConnect( $this->readMaster ? : $master );
 
@@ -592,8 +686,8 @@ abstract class PDOConnection implements DatabaseInterface
             // 占位符
             $param = is_numeric( $key ) ? $key + 1 : ':' . $key;
 
-            $type = $this->getType( $value, $types );
-            $result = $this->PDOStatement->bindParam( $param, $value, $type );
+            $type = $this->getType( $binds[ $key ], $types );
+            $result = $this->PDOStatement->bindParam( $param, $binds[ $key ], $type );
 
             if ( !$result ) {
                 throw new BindParamException(
@@ -812,6 +906,61 @@ abstract class PDOConnection implements DatabaseInterface
     }
 
     /**
+     * Prepares and executes an SQL query and returns the value of a single column
+     * of the first row of the result.
+     * @param $query_sql
+     * @param array $params
+     * @param array $types
+     */
+    public function fetchColumn( $query_sql, array $params = [], array $types = [] )
+    {
+    }
+
+    /**
+     * Prepares and executes an SQL query and returns the first row of the result
+     * as an associative array.
+     * @param $query_sql
+     * @param array $params
+     * @param array $types
+     */
+    public function fetchAssoc( $query_sql, array $params = [], array $types = [] )
+    {
+    }
+
+
+    /**
+     * Prepares and executes an SQL query and returns the first row of the result
+     * as an associative object.
+     * @param $query_sql
+     * @param array $params
+     * @param array $types
+     */
+    public function fetchAssocObject( $query_sql, array $params = [], array $types = [] )
+    {
+    }
+
+
+    /**
+     * Prepares and executes an SQL query and returns the result as an associative array.
+     * @param $query_sql
+     * @param array $params
+     * @param array $types
+     */
+    public function fetchAll($query_sql, array $params = [], $types = []){
+
+    }
+
+    /**
+     * Prepares and executes an SQL query and returns the result as an associative array.
+     * @param $query_sql
+     * @param array $params
+     * @param array $types
+     */
+    public function fetchAllObject($query_sql, array $params = [], $types = []){
+
+    }
+
+    /**
      * 得到结果集的第一个数据
      *
      * @param string $sql SQL语句
@@ -1016,6 +1165,7 @@ abstract class PDOConnection implements DatabaseInterface
      */
     public function autoExecute( $table, $field_values, $mode = 'INSERT', $where = '' )
     {
+        //todo 不需要判断字段是否存在
         $field_names = $this->getCol( 'DESC ' . $table );
 
         $sql = '';
@@ -1227,31 +1377,4 @@ abstract class PDOConnection implements DatabaseInterface
             $debug->setSQL( $sql, $success, $error );
         }
     }
-
-    /**
-     * 执行数据库事务
-     * @access public
-     * @param callable $callback 数据操作方法回调
-     * @return mixed
-     * @throws \Exception
-     * @throws \Throwable
-     */
-    public function transaction( callable $callback )
-    {
-        $this->startTrans();
-
-        try {
-            $result = call_user_func( $callback, $this );
-            $this->commit();
-            return $result;
-        } catch ( \Exception $e ) {
-            $this->rollback();
-            throw $e;
-        } catch ( \Throwable $e ) {
-            $this->rollback();
-            throw $e;
-        }
-    }
-
-    //todo function transactionXa
 }

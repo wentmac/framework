@@ -652,7 +652,6 @@ class QueryBuilderDatabase
         return $this;
     }
 
-
     /**
      * 指定having查询
      * @access public
