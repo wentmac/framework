@@ -494,11 +494,11 @@ abstract class PDOConnection implements DatabaseInterface
      * @throws \Exception
      * @throws \Throwable
      */
-    public function query( $sql, array $binds = [], array $types = [] ): array
+    public function query( $sql, array $binds = [], bool $master = false ): array
     {
-        $this->getPDOStatement( $sql, $binds, $types, $master = false );
+        $this->getPDOStatement( $sql, $binds, $master );
 
-        $resultSet = $this->PDOStatement->fetch( $this->fetchType );
+        $resultSet = $this->getResult($procedure=false);
 
         return $resultSet;
     }
@@ -515,9 +515,9 @@ abstract class PDOConnection implements DatabaseInterface
      * @throws \Exception
      * @throws \Throwable
      */
-    public function execute( $sql, array $binds = [], array $types = [] ): int
+    public function execute( $sql, array $binds = [] ): int
     {
-        $this->getPDOStatement( $sql, $binds, $types, $master = true );
+        $this->getPDOStatement( $sql, $binds, $master = true );
 
         if ( !empty( $this->config[ 'deploy' ] ) && !empty( $this->config[ 'read_master' ] ) ) {
             $this->readMaster = true;
@@ -538,7 +538,7 @@ abstract class PDOConnection implements DatabaseInterface
      * @throws \Exception
      * @throws \Throwable
      */
-    protected function getPDOStatement( string $sql, array $params = [], $types = [], bool $master = false ): PDOStatement
+    protected function getPDOStatement( string $sql, array $params = [], bool $master = false ): PDOStatement
     {
         $this->initConnect( $this->readMaster ? : $master );
 
@@ -546,7 +546,7 @@ abstract class PDOConnection implements DatabaseInterface
         $this->queryStr = $sql;
 
         $this->binds = $params;
-        $this->types = $types;
+        //$this->types = $types;
 
 
         try {
@@ -590,7 +590,7 @@ abstract class PDOConnection implements DatabaseInterface
      */
     public function getLastSql(): string
     {
-        return $this->getRealSql( $this->queryStr, $this->binds, $this->types );
+        return $this->getRealSql( $this->queryStr, $this->binds );
     }
 
     /**
@@ -600,11 +600,11 @@ abstract class PDOConnection implements DatabaseInterface
      * @param array $bind 参数绑定列表
      * @return string
      */
-    public function getRealSql( string $sql, array $binds = [], array $types = [] ): string
+    public function getRealSql( string $sql, array $binds = [] ): string
     {
         foreach ( $binds as $key => $val ) {
             $value = $val;
-            $type = $this->getType( $val, $types );
+            $type = $this->getType( $val );
 
             if ( ( self::PARAM_FLOAT == $type || PDO::PARAM_STR == $type ) && is_string( $value ) ) {
                 $value = '\'' . addslashes( $value ) . '\'';
@@ -628,7 +628,7 @@ abstract class PDOConnection implements DatabaseInterface
      * @param array $types
      * @return int|mixed
      */
-    private function getType( $value, array $types = [] )
+    private function getType( $value )
     {
         if ( is_int( $value ) ) {
             $type = PDO::PARAM_INT;
@@ -637,9 +637,11 @@ abstract class PDOConnection implements DatabaseInterface
         } else {
             $type = PDO::PARAM_STR;
         }
+        /*
         if ( isset( $types[ $param ] ) ) {
             $type = $types[ $param ];
         }
+        */
         return $type;
     }
 
@@ -700,6 +702,48 @@ abstract class PDOConnection implements DatabaseInterface
         }
     }
 
+
+    /**
+     * 获得数据集数组
+     * @access protected
+     * @param bool $procedure 是否存储过程
+     * @return array
+     */
+    protected function getResult(bool $procedure = false): array
+    {
+        if ($procedure) {
+            // 存储过程返回结果
+            return $this->procedure();
+        }
+
+        $result = $this->PDOStatement->fetchAll($this->fetchType);
+
+        $this->numRows = count($result);
+
+        return $result;
+    }
+
+
+    /**
+     * 获得存储过程数据集
+     * @access protected
+     * @return array
+     */
+    protected function procedure(): array
+    {
+        $item = [];
+
+        do {
+            $result = $this->getResult();
+            if (!empty($result)) {
+                $item[] = $result;
+            }
+        } while ($this->PDOStatement->nextRowset());
+
+        $this->numRows = count($item);
+
+        return $item;
+    }
 
     /**
      * 执行数据库事务
@@ -912,7 +956,7 @@ abstract class PDOConnection implements DatabaseInterface
      * @param array $params
      * @param array $types
      */
-    public function fetchColumn( $query_sql, array $params = [], array $types = [] )
+    public function fetchColumn( $query_sql, array $params = [], bool $master = false )
     {
     }
 
@@ -923,7 +967,7 @@ abstract class PDOConnection implements DatabaseInterface
      * @param array $params
      * @param array $types
      */
-    public function fetchAssoc( $query_sql, array $params = [], array $types = [] )
+    public function fetchAssoc( $query_sql, array $params = [], bool $master = false )
     {
     }
 
@@ -935,7 +979,7 @@ abstract class PDOConnection implements DatabaseInterface
      * @param array $params
      * @param array $types
      */
-    public function fetchAssocObject( $query_sql, array $params = [], array $types = [] )
+    public function fetchAssocObject( $query_sql, array $params = [], bool $master = false )
     {
     }
 
@@ -946,7 +990,7 @@ abstract class PDOConnection implements DatabaseInterface
      * @param array $params
      * @param array $types
      */
-    public function fetchAll($query_sql, array $params = [], $types = []){
+    public function fetchAll($query_sql, array $params = [], bool $master = false){
 
     }
 
@@ -956,7 +1000,7 @@ abstract class PDOConnection implements DatabaseInterface
      * @param array $params
      * @param array $types
      */
-    public function fetchAllObject($query_sql, array $params = [], $types = []){
+    public function fetchAllObject($query_sql, array $params = [], bool $master = false){
 
     }
 
