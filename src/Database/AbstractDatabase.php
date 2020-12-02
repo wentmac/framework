@@ -453,7 +453,7 @@ abstract class AbstractDatabase implements DatabaseInterface
      * @return <type>
      */
     public function autoInsertReturn( $table, $field_values )
-    { 
+    {
         $field_names = $this->getCol( 'DESC ' . $table );
 
         $sql = '';

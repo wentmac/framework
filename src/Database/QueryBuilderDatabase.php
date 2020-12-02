@@ -10,6 +10,7 @@
 
 namespace Tmac\Database;
 
+use Tmac\Contract\DatabaseInterface;
 use Tmac\Database\Concern\AggregateQuery;
 use Tmac\Database\Concern\Builder;
 use Tmac\Database\Concern\Orm;

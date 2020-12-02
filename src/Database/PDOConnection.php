@@ -14,12 +14,11 @@ use Tmac\Cache\DriverCache;
 use Tmac\Contract\ConfigInterface;
 use Tmac\Contract\DatabaseInterface;
 use Tmac\Debug;
-use Tmac\Exception\TmacException;
 use Tmac\Exception\BindParamException;
 
 abstract class PDOConnection implements DatabaseInterface
 {
-
+    const PARAM_FLOAT = 21;
     /**
      * 数据库连接参数配置
      * @var array
@@ -240,20 +239,15 @@ abstract class PDOConnection implements DatabaseInterface
         return $this->separator;
     }
 
-    protected function __construct( ConfigInterface $config, Debug $debug, DriverCache $cache )
+    protected function __construct( $config, $app_debug = false, Debug $debug, DriverCache $cache )
     {
         $this->config = $config;
-        $this->dbConfig = $config[ 'database' ];
-
-        $default_connection = $config[ 'database.default' ];
-        if ( !empty( $this->dbConfig[ $default_connection ] ) ) {
-            $this->dbConnectionConfig = array_merge( $this->dbConnectionConfig, $this->dbConfig[ $default_connection ] );
-        }
+        $this->dbConnectionConfig = array_merge( $this->dbConnectionConfig, $this->config );
 
         $this->debug = $debug;
         $this->cache = $cache;
 
-        $this->debug_status = $this->config[ 'app.debug' ];
+        $this->debug_status = $app_debug;
     }
 
 
@@ -264,20 +258,6 @@ abstract class PDOConnection implements DatabaseInterface
      * @return string
      */
     abstract protected function parseDsn( array $config );
-
-    /**
-     * 从结果集中取出数据
-     *
-     * @param resource $rs
-     */
-    protected abstract function fetch( $rs );
-
-    /**
-     * 从结果集中取出对象
-     *
-     * @param resource $rs
-     */
-    protected abstract function fetch_object( $rs );
 
 
     /**
@@ -498,7 +478,7 @@ abstract class PDOConnection implements DatabaseInterface
     {
         $this->getPDOStatement( $sql, $binds, $master );
 
-        $resultSet = $this->getResult($procedure=false);
+        $resultSet = $this->getResult( $procedure = false );
 
         return $resultSet;
     }
@@ -538,7 +518,7 @@ abstract class PDOConnection implements DatabaseInterface
      * @throws \Exception
      * @throws \Throwable
      */
-    protected function getPDOStatement( string $sql, array $params = [], bool $master = false ): PDOStatement
+    protected function getPDOStatement( string $sql, array $params = [], bool $master = false, bool $procedure = false ): PDOStatement
     {
         $this->initConnect( $this->readMaster ? : $master );
 
@@ -576,7 +556,7 @@ abstract class PDOConnection implements DatabaseInterface
             }
 
             if ( $e instanceof \PDOException ) {
-                throw new PDOException( $e, $this->config, $this->getLastsql() );
+                throw new PDOException( $e->getMessage() . ':' . $this->getLastsql() );
             } else {
                 throw $e;
             }
@@ -655,13 +635,13 @@ abstract class PDOConnection implements DatabaseInterface
      * @return void
      * @throws BindParamException
      */
-    protected function bindValue( array $binds = [], array $types = [] ): void
+    protected function bindValue( array $binds = [] ): void
     {
         foreach ( $binds as $key => $value ) {
             // 占位符
             $param = is_numeric( $key ) ? $key + 1 : ':' . $key;
 
-            $type = $this->getType( $value, $types );
+            $type = $this->getType( $value );
             $result = $this->PDOStatement->bindValue( $param, $value, $type );
 
             if ( !$result ) {
@@ -688,7 +668,7 @@ abstract class PDOConnection implements DatabaseInterface
             // 占位符
             $param = is_numeric( $key ) ? $key + 1 : ':' . $key;
 
-            $type = $this->getType( $binds[ $key ], $types );
+            $type = $this->getType( $binds[ $key ] );
             $result = $this->PDOStatement->bindParam( $param, $binds[ $key ], $type );
 
             if ( !$result ) {
@@ -709,16 +689,16 @@ abstract class PDOConnection implements DatabaseInterface
      * @param bool $procedure 是否存储过程
      * @return array
      */
-    protected function getResult(bool $procedure = false): array
+    protected function getResult( bool $procedure = false ): array
     {
-        if ($procedure) {
+        if ( $procedure ) {
             // 存储过程返回结果
             return $this->procedure();
         }
 
-        $result = $this->PDOStatement->fetchAll($this->fetchType);
+        $result = $this->PDOStatement->fetchAll( $this->fetchType );
 
-        $this->numRows = count($result);
+        $this->numRows = count( $result );
 
         return $result;
     }
@@ -735,12 +715,12 @@ abstract class PDOConnection implements DatabaseInterface
 
         do {
             $result = $this->getResult();
-            if (!empty($result)) {
+            if ( !empty( $result ) ) {
                 $item[] = $result;
             }
-        } while ($this->PDOStatement->nextRowset());
+        } while ( $this->PDOStatement->nextRowset() );
 
-        $this->numRows = count($item);
+        $this->numRows = count( $item );
 
         return $item;
     }
@@ -949,6 +929,7 @@ abstract class PDOConnection implements DatabaseInterface
         return $this->linkID;
     }
 
+
     /**
      * Prepares and executes an SQL query and returns the value of a single column
      * of the first row of the result.
@@ -956,8 +937,30 @@ abstract class PDOConnection implements DatabaseInterface
      * @param array $params
      * @param array $types
      */
-    public function fetchColumn( $query_sql, array $params = [], bool $master = false )
+    public function fetch( $query_sql, array $params = [], bool $master = false )
     {
+        $this->getPDOStatement( $query_sql, $params, $master );
+        $result = $this->PDOStatement->fetch( $this->fetchType );
+        $this->numRows = count( $result );
+        return $result;
+    }
+
+    /**
+     * Prepares and executes an SQL query and returns the value of a single column
+     * of the first row of the result.
+     * @param $query_sql
+     * @param array $params
+     * @param array $types
+     */
+    public function fetchColumn( $query_sql, array $params = [], $column = 0, bool $master = false )
+    {
+        $this->getPDOStatement( $query_sql, $params, $master );
+        $result = $this->PDOStatement->fetchColumn( $column );
+        $this->numRows = 0;
+        if ( $result ) {
+            $this->numRows = 1;
+        }
+        return $result;
     }
 
     /**
@@ -969,6 +972,10 @@ abstract class PDOConnection implements DatabaseInterface
      */
     public function fetchAssoc( $query_sql, array $params = [], bool $master = false )
     {
+        $this->getPDOStatement( $query_sql, $params, $master );
+        $result = $this->PDOStatement->fetch( PDO::FETCH_ASSOC );
+        $this->numRows = count( $result );
+        return $result;
     }
 
 
@@ -979,224 +986,62 @@ abstract class PDOConnection implements DatabaseInterface
      * @param array $params
      * @param array $types
      */
-    public function fetchAssocObject( $query_sql, array $params = [], bool $master = false )
+    public function fetchAssocObject( $query_sql, array $params = [], $class_name = '', bool $master = false )
     {
-    }
-
-
-    /**
-     * Prepares and executes an SQL query and returns the result as an associative array.
-     * @param $query_sql
-     * @param array $params
-     * @param array $types
-     */
-    public function fetchAll($query_sql, array $params = [], bool $master = false){
-
-    }
-
-    /**
-     * Prepares and executes an SQL query and returns the result as an associative array.
-     * @param $query_sql
-     * @param array $params
-     * @param array $types
-     */
-    public function fetchAllObject($query_sql, array $params = [], bool $master = false){
-
-    }
-
-    /**
-     * 得到结果集的第一个数据
-     *
-     * @param string $sql SQL语句
-     * @access public
-     * @return mixed
-     */
-    public function getOne( $sql )
-    {
-        //todo cache
-        if ( !$rs = $this->query( $sql ) ) {
-            return false;
-        }
-        $row = $this->fetch( $rs );
-        $this->free( $rs );
-        return is_array( $row ) ? array_shift( $row ) : $row;
-    }
-
-    /**
-     * 以缓存的方式获取结果集的第一个数据
-     *
-     * @param string $sql SQL语句
-     * @param int $expire 缓存时间
-     * @return mixed
-     * @access public
-     */
-    public function cacheGetOne( $sql, $expire = 60 )
-    {
-        $this->is_cache or $this->getCache();
-        $value = $this->cache->get( $sql );
-        if ( $value === false ) {
-            $value = $this->getOne( $sql );
-            $this->cache->set( $sql, $value, $expire );
-        }
-        return $value;
-    }
-
-    /**
-     * 返回结果集的一行
-     *
-     * @param string $sql SQL语句
-     * @access public
-     * @return array
-     */
-    public function getRow( $sql )
-    {
-        //todo cache
-        if ( !$rs = $this->query( $sql ) ) {
-            return false;
-        }
-        $row = $this->fetch( $rs );
-        $this->free( $rs );
-        return $row;
-    }
-
-    /**
-     * 以缓存的方式取得结果集的第一行
-     *
-     * @param string $sql SQL语句
-     * @param int $expire 缓存时间
-     * @return array
-     * @access public
-     */
-    public function cacheGetRow( $sql, $expire = 60 )
-    {
-        $this->is_cache or $this->getCache();
-        $value = $this->cache->get( $sql );
-        if ( $value === false ) {
-            $value = $this->getRow( $sql );
-            $this->cache->set( $sql, $value, $expire );
-        }
-        return $value;
-    }
-
-    /**
-     * 返回结果集的一条对象
-     *
-     * @param string $sql SQL语句
-     * @access public
-     * @return array
-     */
-    public function getRowObject( $sql )
-    {
-        //todo get cache
-        if ( !$rs = $this->query( $sql ) ) {
-            return false;
-        }
-        $row = $this->fetch_object( $rs );
-        $this->free( $rs );
-        return $row;
-    }
-
-    /**
-     * 返回所有结果集
-     *
-     * @param string $sql SQL语句
-     * @access public
-     * @return mixed
-     */
-    public function getAll( $sql )
-    {
-        //todo get cache
-        if ( !$rs = $this->query( $sql ) ) {
-            return false;
-        }
-        $all_rows = array();
-        while ( $rows = $this->fetch( $rs ) ) {
-            $all_rows[] = $rows;
-        }
-        $this->free( $rs );
-        return $all_rows;
-    }
-
-    /**
-     * 以缓存的方式取得所有结果集
-     *
-     * @param string $sql SQL语句
-     * @param int $expire 缓存时间
-     * @return array
-     * @access public
-     */
-    public function cacheGetAll( $sql, $expire = 60 )
-    {
-        $this->is_cache or $this->getCache();
-        $value = $this->cache->get( $sql );
-        if ( $value === false ) {
-            $value = $this->getAll( $sql );
-            $this->cache->set( $sql, $value, $expire );
-        }
-        return $value;
-    }
-
-    /**
-     * 返回所有结果集对象模式
-     *
-     * @param string $sql SQL语句
-     * @access public
-     * @return mixed
-     */
-    public function getAllObject( $sql )
-    {
-        //todo get cache
-        if ( !$rs = $this->query( $sql ) ) {
-            return false;
-        }
-        $all_rows = array();
-        while ( $rows = $this->fetch_object( $rs ) ) {
-            $all_rows[] = $rows;
-        }
-        $this->free( $rs );
-        return $all_rows;
-    }
-
-    /**
-     * 取所有行的第一个字段信息
-     *
-     * @param string $sql SQL语句
-     * @return array
-     * @access public
-     */
-    protected function getCol( $sql )
-    {
-        //todo get cache
-        $res = $this->query( $sql );
-        if ( $res !== false ) {
-            $arr = array();
-            while ( $row = $this->fetch_row( $res ) ) {
-                $arr[] = $row[ 0 ];
-            }
-
-            return $arr;
+        $this->getPDOStatement( $query_sql, $params, $master );
+        if ( empty( $class_name ) ) {
+            $result = $this->PDOStatement->fetch( PDO::FETCH_OBJ );
         } else {
-            return false;
+            $this->PDOStatement->setFetchMode( PDO::FETCH_CLASS, $class_name );
+            $result = $this->PDOStatement->fetch();
         }
+
+
+        /*
+        if ( !empty( $class_name ) ) {
+            $result = $this->PDOStatement->fetchObject( $class_name );
+        } else {
+            $result = $this->PDOStatement->fetchObject();
+        }
+        */
+        $this->numRows = 0;
+        if ( $result ) {
+            $this->numRows = 1;
+        }
+        return $result;
+    }
+
+
+    /**
+     * Prepares and executes an SQL query and returns the result as an associative array.
+     * @param $query_sql
+     * @param array $params
+     * @param array $types
+     */
+    public function fetchAll( $query_sql, array $params = [], bool $master = false )
+    {
+        $this->getPDOStatement( $query_sql, $params, $master );
+        $result = $this->PDOStatement->fetchAll( PDO::FETCH_ASSOC );
+        $this->numRows = count( $result );
+        return $result;
     }
 
     /**
-     * 以缓存方式取所有行的第一个字段信息
-     *
-     * @param string $sql SQL语句
-     * @param int $expire 缓存时间
-     * @return array
-     * @access public
+     * Prepares and executes an SQL query and returns the result as an associative array.
+     * @param $query_sql
+     * @param array $params
+     * @param array $types
      */
-    protected function cachegetCol( $sql, $expire = 60 )
+    public function fetchAllObject( $query_sql, array $params = [], $class_name = '', bool $master = false )
     {
-        $this->is_cache or $this->getCache();
-        $value = $this->cache->get( $sql );
-        if ( $value === false ) {
-            $value = $this->getCol( $sql );
-            $this->cache->set( $sql, $value, $expire );
+        $this->getPDOStatement( $query_sql, $params, $master );
+        if ( empty( $class_name ) ) {
+            $result = $this->PDOStatement->fetchAll( PDO::FETCH_OBJ );
+        } else {
+            $result = $this->PDOStatement->fetchAll( PDO::FETCH_CLASS, $class_name );
         }
-        return $value;
+        $this->numRows = count( $result );
+        return $result;
     }
 
     /**
@@ -1251,159 +1096,136 @@ abstract class PDOConnection implements DatabaseInterface
     }
 
     /**
-     * insert For Mysql return 有返回值 返回mysql_insert_id
-     * @param <type> $table
-     * @param <type> $field_values
-     * @param <type> $mode
-     * @param <type> $where
-     * @return <type>
-     */
-    public function autoInsertReturn( $table, $field_values )
-    {
-        $field_names = $this->getCol( 'DESC ' . $table );
-
-        $sql = '';
-        $fields = $values = array();
-        foreach ( $field_names as $value ) {
-            if ( array_key_exists( $value, $field_values ) == true ) {
-                $fields[] = '`' . $value . '`';
-                if ( $field_values[ $value ] instanceof TmacDbExpr ) {
-                    $values[] = $field_values[ $value ];
-                } else {
-                    $values[] = $this->escape( $field_values[ $value ] );
-                }
-            }
-        }
-
-        $sql = $this->getInsertSql( $table, $fields, $values );
-
-        if ( $sql ) {
-            return $this->insert( $sql );
-        } else {
-            return false;
-        }
-    }
-
-    public function insertObject( $table, $object )
-    {
-        $entity_table_name = get_class( $object );
-        $entity_table_class = new $entity_table_name();
-
-        $fields = $values = array();
-        foreach ( $object as $key => $value ) {
-            if ( isset ( $value ) === false ) {//排除掉对象值为空的
-                continue;
-            }
-            if ( property_exists( $entity_table_class, $key ) === false ) {//排除掉数据库实体中不存在的
-                continue;
-            }
-            $fields[] = $this->identifier_left . $key . $this->identifier_right;
-            if ( $value instanceof TmacDbExpr ) {
-                $values[] = $value;
-            } else {
-                $values[] = $this->escape( $value );
-            }
-        }
-        $sql = $this->getInsertSql( $table, $fields, $values );
-        if ( $sql ) {
-            return $this->insert( $sql );
-        } else {
-            return false;
-        }
-    }
-
-    /**
-     * 更新数据实体
-     * @param type $table 表名
-     * @param type $object 表实据实体
-     * @param type $where 更新条件
-     * @param type $primaryKeyField 如果不为空，则是主键更新时的主键名称
-     * @return boolean
-     */
-    public function updateObject( $table, $object, $where, $primaryKeyField = '' )
-    {
-        $entity_table_name = get_class( $object );
-        $entity_table_class = new $entity_table_name();
-
-        $sets = array();
-        foreach ( $object as $key => $value ) {
-            if ( isset ( $value ) === false ) {//排除掉对象值为空的
-                continue;
-            }
-            if ( property_exists( $entity_table_class, $key ) === false ) {//排除掉数据库实体中不存在的
-                continue;
-            }
-            if ( !empty ( $primaryKeyField ) && $key === $primaryKeyField ) {//排除掉主键更新时的主键字段的误更新
-                continue;
-            }
-            if ( $value instanceof TmacDbExpr ) {
-                $sets[] = $this->identifier_left . $key . $this->identifier_right . ' = ' . $value;
-            } else {
-                $sets[] = $this->identifier_left . $key . $this->identifier_right . ' = ' . $this->escape( $value );
-            }
-        }
-        $sql = $this->getUpdateSql( $table, $sets, $where );
-        if ( $sql ) {
-            return $this->execute( $sql );
-        } else {
-            return false;
-        }
-    }
-
-
-    /**
-     * 通过 表名，字段数组，值数组 返回组合的sql
-     * @param type $table
-     * @param type $fields
-     * @param type $values
+     * 数据绑定处理
+     * @access protected
+     * @param Query $query 查询对象
+     * @param string $key 字段名
+     * @param mixed $data 数据
+     * @param array $bind 绑定数据
      * @return string
      */
-    protected function getInsertSql( $table, $fields, $values )
+    protected function parseDataBind( string $name ): string
     {
-        $sql = false;
-        if ( !empty ( $fields ) ) {
-            $sql = 'INSERT INTO ' . $table . ' (' . implode( ', ', $fields ) . ') VALUES (' . implode( ', ', $values ) . ')';
-        }
-        return $sql;
+        return ':' . $name;
     }
 
     /**
-     * 通过 表名，filed=$value, $where条件
-     * @param type $table
-     * @param type $sets
-     * @param type $where
-     * @return string
+     * Adds identifier condition to the query components
+     *
+     * @param mixed[] $identifier Map of key columns to their values
+     * @param string[] $columns Column names
+     * @param mixed[] $values Column values
+     * @param string[] $conditions Key conditions
+     *
+     * @throws Exception
      */
-    protected function getUpdateSql( $table, $sets, $where )
+    private function addIdentifierCondition(
+        array $identifier,
+        array &$conditions,
+        array &$binds
+    ): void
     {
-        $sql = false;
-        if ( !empty ( $sets ) ) {
-            $sql = 'UPDATE ' . $table . ' SET ' . implode( ', ', $sets ) . ' WHERE ' . $where;
+        foreach ( $identifier as $columnName => $value ) {
+            if ( $value === null ) {
+                continue;
+            }
+            $conditions[] = $columnName . ' = ' . $this->parseDataBind( $columnName );;
+            $binds[ $columnName ] = $value;
         }
-        return $sql;
     }
 
     /**
-     * "Smart" Escape String
+     * Inserts a table row with specified data.
      *
-     * Escapes data based on type
-     * Sets boolean and null types
+     * Table expression and columns are not escaped and are not safe for user-input.
      *
-     * @access    public
-     * @param string
-     * @return    mixed
+     * @param string $table The expression of the table to insert data into, quoted or unquoted.
+     * @param mixed[] $data An associative array containing column-value pairs.
+     * @param int[]|string[] $types Types of the inserted data.
+     *
+     * @return int The number of affected rows.
+     *
+     * @throws Exception
      */
-    protected function escape( $str )
+    public function insert( $table, array $data )
     {
-        if ( is_string( $str ) ) {
-            $str = "'" . $str . "'";
-        } elseif ( is_bool( $str ) ) {
-            $str = ( $str === FALSE ) ? 0 : 1;
-        } elseif ( is_null( $str ) ) {
-            $str = 'NULL';
+        if ( empty( $data ) ) {
+            return 0;
+        }
+        $columns = [];
+        $values = [];
+        $set = [];
+
+        foreach ( $data as $columnName => $value ) {
+            $columns[] = $columnName;
+            $set[] = $this->parseDataBind( $columnName );
         }
 
-        return $str;
+        $sql = 'INSERT INTO ' . $table . ' (' . implode( ', ', $columns ) . ')' .
+            ' VALUES (' . implode( ', ', $set ) . ')';
+        $result = '' == $sql ? 0 : $this->execute( $sql, $data );
+        if ( $result ) {
+            $last_insert_id = $this->getLastInsID();
+            return $last_insert_id;
+        }
+        return false;
+    }
+
+    /**
+     * @param $table
+     * @param array $data
+     * @param array $identifier
+     * @return array|int
+     * @throws BindParamException
+     * @throws \Throwable
+     */
+    public function update( $table, array $data, array $identifier )
+    {
+        if ( empty( $data ) ) {
+            return 0;
+        }
+        $binds = [];
+        $values = [];
+        $set = [];
+        $conditions = [];
+
+        foreach ( $data as $columnName => $value ) {
+            if ( $value instanceof TmacDbExpr ) {
+                $set[] = $columnName . '=' . $value;
+            } else {
+                $set[] = $columnName . '=' . $this->parseDataBind( $columnName );
+            }
+            $binds[ $columnName ] = $value;
+        }
+        $this->addIdentifierCondition( $identifier, $conditions, $binds );
+
+        $sql = 'UPDATE ' . $table . ' SET ' . implode( ', ', $set )
+            . ' WHERE ' . implode( ' AND ', $conditions );
+
+        return $this->execute( $sql, $binds );
+    }
+
+    /**
+     * @param $table
+     * @param array $data
+     * @param array $identifier
+     * @return array|int
+     * @throws BindParamException
+     * @throws \Throwable
+     */
+    public function delete( $table, array $identifier )
+    {
+        if ( empty( $data ) ) {
+            return 0;
+        }
+        $conditions = [];
+        $values = [];
+
+        $this->addIdentifierCondition( $identifier, $conditions );
+
+        $sql = 'DELETE FROM ' . $table . ' WHERE ' . implode( ' AND ', $conditions );
+
+        return $this->execute( $sql, $values );
     }
 
     /**

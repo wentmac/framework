@@ -7,7 +7,9 @@
 
 namespace Tmac\Database;
 
+use Tmac\Container;
 use Tmac\Contract\ConfigInterface;
+use Tmac\Database\Connector\MySqlConnector;
 use Tmac\Debug;
 use Tmac\Cache\DriverCache;
 use Tmac\Exception\TmacException;
@@ -15,6 +17,7 @@ use Tmac\Exception\TmacException;
 class DriverDatabase
 {
 
+    private $app_debug;
     /**
      * @var ConfigInterface $config
      */
@@ -30,7 +33,7 @@ class DriverDatabase
      */
     private $cache;
 
-    protected  $instance;
+    protected $instance;
 
     /**
      * @return mixed
@@ -41,35 +44,42 @@ class DriverDatabase
     }
 
 
-    public function __construct( ConfigInterface $config, Debug $debug, DriverCache $cache )
+    public function __construct( Container $container, $config, $app_debug = false )
     {
         $this->config = $config;
-        $this->debug = $debug;
-        $this->cache = $cache;
+        $this->debug = $container->get( 'debug' );
+        $this->cache = $container->get( 'cache' );
+        $this->app_debug = $app_debug;
 
         $this->instance = $this->createConnector();
     }
 
+    /**
+     * @return mixed|PDOConnection
+     * @throws TmacException
+     */
     public function createConnector()
     {
         $config = $this->config;
         $debug = $this->debug;
         $cache = $this->cache;
-        if ( !isset( $config[ 'database.mysql' ] ) ) {
-            throw new TmacException( 'A driver must be specified.' );
+        $app_debug = $this->app_debug;
+
+        try {
+            switch ( $config[ 'type' ] ) {
+                case 'mysql':
+                    return new MySqlConnector( $config, $app_debug, $debug, $cache );
+                    break;
+                default:
+                    $dbClassName = ucfirst( $config[ 'type' ] ) . 'Connector';
+                    return new $dbClassName( $config, $app_debug, $debug, $cache );
+                    break;
+            }
+        } catch ( TmacException $e ) {
+            throw new TmacException( $e->getMessage() );
         }
 
-        switch ( $config[ 'database.mysql.driver' ] ) {
-            case 'mysql':
-                return new MysqlDatabase( $config, $debug, $cache );
-            case 'mysqli':
-                //return new MysqliDatabase( $config, $debug, $cache );
-                return new MySqlConnector( $config, $debug, $cache );
-            case 'mssql':
-                return new MssqlDatabase( $config, $debug, $cache );
-        }
-
-        throw new InvalidArgumentException( "Unsupported driver [{$config[ 'database.mysql.driver' ]}]." );
+        throw new InvalidArgumentException( "Unsupported driver [{$config[ 'driver' ]}]." );
     }
 
 }
