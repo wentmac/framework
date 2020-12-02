@@ -9,7 +9,7 @@ namespace Tmac\Database;
 
 use Tmac\Container;
 use Tmac\Contract\ConfigInterface;
-use Tmac\Database\Connector\MySqlConnector;
+use Tmac\Database\Connector\MysqlConnector;
 use Tmac\Debug;
 use Tmac\Cache\DriverCache;
 use Tmac\Exception\TmacException;
@@ -68,7 +68,7 @@ class DriverDatabase
         try {
             switch ( $config[ 'type' ] ) {
                 case 'mysql':
-                    return new MySqlConnector( $config, $app_debug, $debug, $cache );
+                    return new MysqlConnector( $config, $app_debug, $debug, $cache );
                     break;
                 default:
                     $dbClassName = ucfirst( $config[ 'type' ] ) . 'Connector';

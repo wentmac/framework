@@ -527,8 +527,6 @@ abstract class PDOConnection implements DatabaseInterface
 
         $this->binds = $params;
         //$this->types = $types;
-
-
         try {
             // $this->queryStartTime = microtime( true );
 
@@ -547,7 +545,8 @@ abstract class PDOConnection implements DatabaseInterface
 
 
             $this->reConnectTimes = 0;
-
+            //记录sql日志
+            $this->debug();
             return $this->PDOStatement;
         } catch ( \Throwable | \Exception $e ) {
             if ( $this->reConnectTimes < 4 && $this->isBreak( $e ) ) {
@@ -612,6 +611,8 @@ abstract class PDOConnection implements DatabaseInterface
     {
         if ( is_int( $value ) ) {
             $type = PDO::PARAM_INT;
+        } elseif ( is_string( $value ) ) {
+            $type = PDO::PARAM_STR;
         } elseif ( is_resource( $value ) ) {
             $type = PDO::PARAM_LOB;
         } else {
@@ -768,10 +769,11 @@ abstract class PDOConnection implements DatabaseInterface
         try {
             if ( $this->transLevel == 1 ) { //保证最外层的transtion才start
                 $this->linkID->beginTransaction();
+                $this->debug( 'beginTransaction()' );
             } else if ( $this->transLevel > 1 && $this->supportSavepoint() ) {
-                $this->linkID->exec(
-                    $this->parseSavepoint( 'trans' . $this->transLevel )
-                );
+                $parseSavepoint = $this->parseSavepoint( 'trans' . $this->transLevel );
+                $this->linkID->exec( $parseSavepoint );
+                $this->debug( $parseSavepoint );
             }
         } catch ( \Exception $e ) {
             if ( $this->reConnectTimes < 4 && $this->isBreak( $e ) ) {
@@ -794,6 +796,7 @@ abstract class PDOConnection implements DatabaseInterface
 
         if ( $this->transLevel == 1 ) { //如果当前事务只有一层时 才能提交
             $this->linkID->commit();
+            $this->debug( 'commit()' );
         }
         --$this->transLevel;
     }
@@ -809,10 +812,11 @@ abstract class PDOConnection implements DatabaseInterface
 
         if ( $this->transLevel == 1 ) { //如果当前事务只有一层时 才能回滚
             $this->linkID->rollBack();
+            $this->debug( 'rollBack()' );
         } else if ( $this->transLevel > 1 && $this->supportSavepoint() ) {
-            $this->linkID->exec(
-                $this->parseSavepointRollBack( 'trans' . $this->transLevel )
-            );
+            $parseSavepointRollBack = $this->parseSavepointRollBack( 'trans' . $this->transLevel );
+            $this->linkID->exec( $parseSavepointRollBack );
+            $this->debug( $parseSavepointRollBack );
         }
         --$this->transLevel;
     }
@@ -862,7 +866,7 @@ abstract class PDOConnection implements DatabaseInterface
         $this->links = [];
 
         $this->free();
-
+        $this->debug( 'close()' );
         return $this;
     }
 
@@ -929,7 +933,124 @@ abstract class PDOConnection implements DatabaseInterface
         return $this->linkID;
     }
 
+    /**
+     * Adds identifier condition to the query components
+     *
+     * @param mixed[] $identifier Map of key columns to their values
+     * @param string[] $columns Column names
+     * @param mixed[] $values Column values
+     * @param string[] $conditions Key conditions
+     *
+     * @throws Exception
+     */
+    private function addIdentifierCondition(
+        array $identifier,
+        array &$conditions,
+        array &$binds = []
+    ): void
+    {
+        foreach ( $identifier as $columnName => $value ) {
+            if ( $value === null ) {
+                continue;
+            }
+            $conditions[] = $columnName . ' = ' . $this->parseDataBind( $columnName );;
+            $binds[ $columnName ] = $value;
+        }
+    }
 
+    /**
+     * Inserts a table row with specified data.
+     *
+     * Table expression and columns are not escaped and are not safe for user-input.
+     *
+     * @param string $table The expression of the table to insert data into, quoted or unquoted.
+     * @param mixed[] $data An associative array containing column-value pairs.
+     * @param int[]|string[] $types Types of the inserted data.
+     *
+     * @return int The number of affected rows.
+     *
+     * @throws Exception
+     */
+    public function insert( $table, array $data )
+    {
+        if ( empty( $data ) ) {
+            return 0;
+        }
+        $columns = [];
+        $values = [];
+        $set = [];
+
+        foreach ( $data as $columnName => $value ) {
+            $columns[] = $columnName;
+            $set[] = $this->parseDataBind( $columnName );
+        }
+
+        $sql = 'INSERT INTO ' . $table . ' (' . implode( ', ', $columns ) . ')' .
+            ' VALUES (' . implode( ', ', $set ) . ')';
+        $result = '' == $sql ? 0 : $this->execute( $sql, $data );
+        if ( $result ) {
+            $last_insert_id = $this->getLastInsID();
+            return $last_insert_id;
+        }
+        return false;
+    }
+
+    /**
+     * @param $table
+     * @param array $data
+     * @param array $identifier
+     * @return array|int
+     * @throws BindParamException
+     * @throws \Throwable
+     */
+    public function update( $table, array $data, array $identifier )
+    {
+        if ( empty( $data ) ) {
+            return 0;
+        }
+        $binds = [];
+        $values = [];
+        $set = [];
+        $conditions = [];
+
+        foreach ( $data as $columnName => $value ) {
+            if ( $value instanceof TmacDbExpr ) {
+                $set[] = $columnName . '=' . $value;
+            } else {
+                $set[] = $columnName . '=' . $this->parseDataBind( $columnName );
+            }
+            $binds[ $columnName ] = $value;
+        }
+        $this->addIdentifierCondition( $identifier, $conditions, $binds );
+
+        $sql = 'UPDATE ' . $table . ' SET ' . implode( ', ', $set )
+            . ' WHERE ' . implode( ' AND ', $conditions );
+
+        return $this->execute( $sql, $binds );
+    }
+
+    /**
+     * @param $table
+     * @param array $data
+     * @param array $identifier
+     * @return array|int
+     * @throws BindParamException
+     * @throws \Throwable
+     */
+    public function delete( $table, array $identifier )
+    {
+        if ( empty( $identifier ) ) {
+            return 0;
+        }
+        $conditions = [];
+        $binds = [];
+
+        $this->addIdentifierCondition( $identifier, $conditions, $binds );
+
+        $sql = 'DELETE FROM ' . $table . ' WHERE ' . implode( ' AND ', $conditions );
+        return $this->execute( $sql, $binds );
+    }
+    
     /**
      * Prepares and executes an SQL query and returns the value of a single column
      * of the first row of the result.
@@ -1045,57 +1166,6 @@ abstract class PDOConnection implements DatabaseInterface
     }
 
     /**
-     * insert update For Mysql
-     * @param <type> $table
-     * @param <type> $field_values
-     * @param <type> $mode
-     * @param <type> $where
-     * @return <type>
-     */
-    public function autoExecute( $table, $field_values, $mode = 'INSERT', $where = '' )
-    {
-        //todo 不需要判断字段是否存在
-        $field_names = $this->getCol( 'DESC ' . $table );
-
-        $sql = '';
-        if ( $mode == 'INSERT' ) {
-            $fields = $values = array();
-            foreach ( $field_names as $value ) {
-                if ( array_key_exists( $value, $field_values ) == false ) {
-                    continue;
-                }
-                $fields[] = '`' . $value . '`';
-                if ( $field_values[ $value ] instanceof TmacDbExpr ) {
-                    $values[] = $field_values[ $value ];
-                } else {
-                    $values[] = $this->escape( $field_values[ $value ] );
-                }
-            }
-            $sql = $this->getInsertSql( $table, $fields, $values );
-        } else {
-            $sets = array();
-            foreach ( $field_names as $value ) {
-                if ( array_key_exists( $value, $field_values ) == false ) {
-                    continue;
-                }
-                if ( $field_values[ $value ] instanceof TmacDbExpr ) {
-                    $sets[] = '`' . $value . '` = ' . $field_values[ $value ];
-                } else {
-                    $sets[] = '`' . $value . '` = ' . $this->escape( $field_values[ $value ] );
-                }
-            }
-
-            $sql = $this->getUpdateSql( $table, $sets, $where );
-        }
-
-        if ( $sql ) {
-            return $this->execute( $sql );
-        } else {
-            return false;
-        }
-    }
-
-    /**
      * 数据绑定处理
      * @access protected
      * @param Query $query 查询对象
@@ -1110,136 +1180,17 @@ abstract class PDOConnection implements DatabaseInterface
     }
 
     /**
-     * Adds identifier condition to the query components
-     *
-     * @param mixed[] $identifier Map of key columns to their values
-     * @param string[] $columns Column names
-     * @param mixed[] $values Column values
-     * @param string[] $conditions Key conditions
-     *
-     * @throws Exception
-     */
-    private function addIdentifierCondition(
-        array $identifier,
-        array &$conditions,
-        array &$binds
-    ): void
-    {
-        foreach ( $identifier as $columnName => $value ) {
-            if ( $value === null ) {
-                continue;
-            }
-            $conditions[] = $columnName . ' = ' . $this->parseDataBind( $columnName );;
-            $binds[ $columnName ] = $value;
-        }
-    }
-
-    /**
-     * Inserts a table row with specified data.
-     *
-     * Table expression and columns are not escaped and are not safe for user-input.
-     *
-     * @param string $table The expression of the table to insert data into, quoted or unquoted.
-     * @param mixed[] $data An associative array containing column-value pairs.
-     * @param int[]|string[] $types Types of the inserted data.
-     *
-     * @return int The number of affected rows.
-     *
-     * @throws Exception
-     */
-    public function insert( $table, array $data )
-    {
-        if ( empty( $data ) ) {
-            return 0;
-        }
-        $columns = [];
-        $values = [];
-        $set = [];
-
-        foreach ( $data as $columnName => $value ) {
-            $columns[] = $columnName;
-            $set[] = $this->parseDataBind( $columnName );
-        }
-
-        $sql = 'INSERT INTO ' . $table . ' (' . implode( ', ', $columns ) . ')' .
-            ' VALUES (' . implode( ', ', $set ) . ')';
-        $result = '' == $sql ? 0 : $this->execute( $sql, $data );
-        if ( $result ) {
-            $last_insert_id = $this->getLastInsID();
-            return $last_insert_id;
-        }
-        return false;
-    }
-
-    /**
-     * @param $table
-     * @param array $data
-     * @param array $identifier
-     * @return array|int
-     * @throws BindParamException
-     * @throws \Throwable
-     */
-    public function update( $table, array $data, array $identifier )
-    {
-        if ( empty( $data ) ) {
-            return 0;
-        }
-        $binds = [];
-        $values = [];
-        $set = [];
-        $conditions = [];
-
-        foreach ( $data as $columnName => $value ) {
-            if ( $value instanceof TmacDbExpr ) {
-                $set[] = $columnName . '=' . $value;
-            } else {
-                $set[] = $columnName . '=' . $this->parseDataBind( $columnName );
-            }
-            $binds[ $columnName ] = $value;
-        }
-        $this->addIdentifierCondition( $identifier, $conditions, $binds );
-
-        $sql = 'UPDATE ' . $table . ' SET ' . implode( ', ', $set )
-            . ' WHERE ' . implode( ' AND ', $conditions );
-
-        return $this->execute( $sql, $binds );
-    }
-
-    /**
-     * @param $table
-     * @param array $data
-     * @param array $identifier
-     * @return array|int
-     * @throws BindParamException
-     * @throws \Throwable
-     */
-    public function delete( $table, array $identifier )
-    {
-        if ( empty( $data ) ) {
-            return 0;
-        }
-        $conditions = [];
-        $values = [];
-
-        $this->addIdentifierCondition( $identifier, $conditions );
-
-        $sql = 'DELETE FROM ' . $table . ' WHERE ' . implode( ' AND ', $conditions );
-
-        return $this->execute( $sql, $values );
-    }
-
-    /**
      * DEBUG信息
      *
      * @param string $sql
      * @param bool $success
      * @param error string
      */
-    public function debug( $sql, $success = true, $error = null )
+    public function debug( $sql = '', $success = true, $error = null )
     {
-
         if ( $this->debug_status ) {
             $debug = $this->debug;
+            $sql = empty( $sql ) ? $this->getLastSql() : $sql;
             $debug->setSQL( $sql, $success, $error );
         }
     }
