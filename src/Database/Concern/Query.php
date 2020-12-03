@@ -8,6 +8,7 @@ use Tmac\Database\TmacDbExpr;
 trait Query
 {
 
+    //todo 如果实体中包含主键的话，就是使用主键更新
     public function update( $entity )
     {
     }
