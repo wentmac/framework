@@ -37,7 +37,7 @@ trait ParamsBind
      * @param string  $name  绑定标识
      * @return string
      */
-    public function bindValue($value, int $type = null, string $name = null)
+    private function bindValue($value, int $type = null, string $name = null)
     {
         $name = $name ?: 'ThinkBind_' . (count($this->bind) + 1) . '_' . mt_rand() . '_';
 
@@ -52,7 +52,7 @@ trait ParamsBind
      * @param  array  $bindings
      * @return void
      */
-    public function bindValues($statement, $bindings)
+    private function bindValues($statement, $bindings)
     {
         foreach ($bindings as $key => $value) {
             $statement->bindValue(
@@ -82,7 +82,7 @@ trait ParamsBind
      * @param array  $bind 参数绑定
      * @return void
      */
-    protected function bindParams(string &$sql, array $bind = []): void
+    private function bindParams(string &$sql, array $bind = []): void
     {
         foreach ($bind as $key => $value) {
             if (is_array($value)) {
