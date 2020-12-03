@@ -173,17 +173,6 @@ class QueryBuilderDatabase
         return $this;
     }
 
-    public function getTop()
-    {
-        return $this->top;
-    }
-
-    public function setTop( $top )
-    {
-        $this->top = $top;
-        return $this;
-    }
-
     public function getPk()
     {
         return $this->pk;
@@ -239,145 +228,7 @@ class QueryBuilderDatabase
         return $this;
     }
 
-    /**
-     * 通过主键取数据库信息
-     * @return type
-     */
-    public function getInfoByPk( $id = 0 )
-    {
-        if ( !empty( $id ) ) {
-            $this->pk = $id;
-        }
-        $this->removeOption();
-        $this->where( $this->getPrimaryKey(), $this->pk );
-        $sql = $this->build();
-        $res = $this->getConn()->getRowObject( $sql );
-        return $res;
-    }
 
-    /**
-     * 通过$where条件取数据库信息
-     * @return type
-     */
-    public function getInfoByWhere()
-    {
-        $sql = $this->getConn()->getInfoSqlByWhere( $this );
-        $this->removeOption();
-        $this->where( $this->getPrimaryKey(), $this->pk );
-        $sql = $this->build();
-        $res = $this->getConn()->getRowObject( $sql );
-        return $res;
-    }
-
-    /**
-     * 通过$where条件取多条数据库信息
-     * @return type
-     */
-    public function getArrayListByWhere()
-    {
-        $sql = $this->getConn()->getSqlByWhere( $this );
-        $res = $this->getConn()->getAll( $sql );
-        return $res;
-    }
-
-    /**
-     * 通过$where条件取多条数据库信息
-     * @return type
-     */
-    public function getListByWhere()
-    {
-        $sql = $this->getConn()->getSqlByWhere( $this );
-        $res = $this->getConn()->getAllObject( $sql );
-        return $res;
-    }
-
-    /**
-     * 通过$where条件取总数
-     * @return integer
-     */
-    public function getCountByWhere()
-    {
-        $sql_count = $this->getConn()->getCountSqlByWhere( $this );
-        $count = $this->getConn()->getOne( $sql_count );
-        return $count;
-    }
-
-    /**
-     * 通过主键更新数据
-     * @param  $entity
-     * @return boolean
-     */
-    public function updateByPk( $entity )
-    {
-        if ( empty( $this->pk ) ) {
-            return false;
-        }
-        $where = $this->getPrimaryKey() . '=' . $this->pk;
-        $rs = $this->getConn()->updateObject( $this->getTable(), $entity, $where, $this->getPrimaryKey() );
-        return $rs;
-    }
-
-    /**
-     * 通过$where条件更新数据
-     * @param $entity
-     * @return bool
-     */
-    public function updateByWhere( $entity )
-    {
-        $rs = $this->getConn()->updateObject( $this->getTable(), $entity, $this->getWhere() );
-        return $rs;
-    }
-
-    /**
-     * 插入数据
-     * @param $entity
-     * @return int
-     */
-    public function insert( $entity )
-    {
-        return $this->getConn()->insertObject( $this->getTable(), $entity );
-    }
-
-    /**
-     * 通过主键删除一条记录{删除数据的操作请慎用}
-     * @return type
-     */
-    public function deleteByPk()
-    {
-        $sql = $this->getConn()->getDeleteSqlByPk( $this );
-        $res = $this->getConn()->execute( $sql );
-        return $res;
-    }
-
-    /**
-     * 通过$where条件删除N条记录{删除数据的操作请慎用}
-     * @return type
-     */
-    public function deleteByWhere()
-    {
-        $sql = $this->getConn()->getDeleteSqlByWhere( $this );
-        $res = $this->getConn()->execute( $sql );
-        return $res;
-    }
-
-    /**
-     * 取有可能有where in的语句
-     * @param string $field
-     * @param array|string $value 支持 array,int_string,int
-     * @return type
-     */
-    public function getWhereInStatement( $field, $value )
-    {
-        if ( is_array( $value ) ) {
-            $value_string = implode( ',', $value );
-            return "{$field} IN({$value_string}) ";
-        }
-        if ( strpos( $value, ',' ) !== false ) {
-            return "{$field} IN({$value}) ";
-        } else {
-            return "{$field} ={$value} ";
-        }
-    }
 
     /**
      * join子句查询
@@ -529,6 +380,10 @@ class QueryBuilderDatabase
         return $this->whereRaw( $sql, $bind, 'OR' );
     }
 
+    /**
+     * @param string $direction
+     * @return string
+     */
     private function checkOrderByDirction( $direction = 'desc' )
     {
         $direction = strtoupper( $direction );
@@ -550,6 +405,12 @@ class QueryBuilderDatabase
     }
 
 
+    /**
+     * 排序
+     * @param $columns
+     * @param string $direction
+     * @return $this
+     */
     public function orderBy( $columns, $direction = 'asc' )
     {
         $direction = $this->checkOrderByDirction( $direction );
@@ -736,61 +597,10 @@ class QueryBuilderDatabase
 
         return $this;
     }
-
-
-    /**
-     * $sql = "select * from posts where post_title=? and post_time >? order by post_id desc limit 0, 10";
-     * $postModel->query($sql, array('doitphp', '2010-5-4'))->fetchAll();
-     *
-     * 执行SQL语句
-     *
-     * 注：用于执行查询性的SQL语句（需要数据返回的情况）。
-     *
-     * @access public
-     *
-     * @param string $sql SQL语句
-     * @param array $params 待转义的参数值
-     *
-     * @return mixed
-     */
-    public function query( $sql )
-    {
-
-    }
-
+    
 
     /**
-     * 例二、 $sql = "update posts set post_title=? where id=5";
-     * $postModel->execute($sql, 'lucky tommy every day');
-     *
-     * 执行SQL语句
-     *
-     * 注：本方法用于无需返回信息的操作。如：更改、删除、添加数据信息(即：用于执行非查询SQL语句)
-     *
-     * @access public
-     *
-     * @param string $sql 所要执行的SQL语句
-     * @param array $params 待转义的数据。注：本参数支持字符串及数组，如果待转义的数据量在两个或两个以上请使用数组
-     *
-     * @return boolean
-     */
-    public function execute( $sql, $params = null )
-    {
-
-    }
-
-
-    public function getQuery()
-    {
-    }
-
-    public function __destruct()
-    {
-
-    }
-
-    /**
-     * todo
+     * todo 暂时没用
      * 查询缓存
      * @access public
      * @param mixed $key 缓存key
@@ -812,5 +622,11 @@ class QueryBuilderDatabase
         $this->options[ 'cache' ] = [ $key, $expire, $tag ];
 
         return $this;
+    }
+
+
+    public function __destruct()
+    {
+
     }
 }
