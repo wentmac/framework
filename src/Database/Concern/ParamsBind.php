@@ -1,6 +1,6 @@
 <?php
 
-declare (strict_types = 1);
+declare ( strict_types=1 );
 
 namespace Tmac\Database\Concern;
 
@@ -23,46 +23,56 @@ trait ParamsBind
      * @param array $value 绑定变量值
      * @return $this
      */
-    public function bind(array $value)
+    public function bind( array $value )
     {
-        $this->bind = array_merge($this->bind, $value);
+        $this->bind = array_merge( $this->bind, $value );
         return $this;
     }
 
     /**
      * 单个参数绑定
      * @access public
-     * @param mixed   $value 绑定变量值
-     * @param integer $type  绑定类型
-     * @param string  $name  绑定标识
+     * @param mixed $value 绑定变量值
+     * @param integer $type 绑定类型
+     * @param string $name 绑定标识
      * @return string
      */
-    private function bindValue($value, int $type = null, string $name = null)
+    protected function bindValue( $value, int $type = null, string $name = null )
     {
-        $name = $name ?: 'ThinkBind_' . (count($this->bind) + 1) . '_' . mt_rand() . '_';
+        $name = $name ? : 'TmacBind_' . ( count( $this->bind ) + 1 ) . '_' . mt_rand();
 
-        $this->bind[$name] = [$value, $type ?: PDO::PARAM_STR];
+        $this->bind[ $name ] = [ $value, $type ? : PDO::PARAM_STR ];
         return $name;
+    }
+
+    /**
+     * 生成 :file_name的名字绑定
+     * @param string $name
+     * @return string
+     */
+    protected function generateBindName( string $name )
+    {
+        return 'TmacBind' . '_' . ( count( $this->bind ) + 1 ) . '_' . $name;
     }
 
     /**
      * Bind values to their parameters in the given statement.
      *
-     * @param  \PDOStatement  $statement
-     * @param  array  $bindings
+     * @param \PDOStatement $statement
+     * @param array $bindings
      * @return void
      */
-    private function bindValues($statement, $bindings)
+    private function bindValues( $statement, $bindings )
     {
-        foreach ($bindings as $key => $value) {
+        foreach ( $bindings as $key => $value ) {
             $statement->bindValue(
-                is_string($key) ? $key : $key + 1,
+                is_string( $key ) ? $key : $key + 1,
                 $value,
-                is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR
+                is_int( $value ) ? PDO::PARAM_INT : PDO::PARAM_STR
             );
         }
     }
-    
+
 
     /**
      * 检测参数是否已经绑定
@@ -70,31 +80,31 @@ trait ParamsBind
      * @param string $key 参数名
      * @return bool
      */
-    public function isBind($key)
+    public function isBind( $key )
     {
-        return isset($this->bind[$key]);
+        return isset( $this->bind[ $key ] );
     }
 
     /**
      * 参数绑定
      * @access public
-     * @param string $sql  绑定的sql表达式
-     * @param array  $bind 参数绑定
+     * @param string $sql 绑定的sql表达式
+     * @param array $bind 参数绑定
      * @return void
      */
-    private function bindParams(string &$sql, array $bind = []): void
+    private function bindParams( string &$sql, array $bind = [] ): void
     {
-        foreach ($bind as $key => $value) {
-            if (is_array($value)) {
-                $name = $this->bindValue($value[0], $value[1], $value[2] ?? null);
+        foreach ( $bind as $key => $value ) {
+            if ( is_array( $value ) ) {
+                $name = $this->bindValue( $value[ 0 ], $value[ 1 ], $value[ 2 ] ?? null );
             } else {
-                $name = $this->bindValue($value);
+                $name = $this->bindValue( $value );
             }
 
-            if (is_numeric($key)) {
-                $sql = substr_replace($sql, ':' . $name, strpos($sql, '?'), 1);
+            if ( is_numeric( $key ) ) {
+                $sql = substr_replace( $sql, ':' . $name, strpos( $sql, '?' ), 1 );
             } else {
-                $sql = str_replace(':' . $key, ':' . $name, $sql);
+                $sql = str_replace( ':' . $key, ':' . $name, $sql );
             }
         }
     }
@@ -105,10 +115,10 @@ trait ParamsBind
      * @param bool $clear 是否清空绑定数据
      * @return array
      */
-    public function getBind(bool $clear = true): array
+    public function getBind( bool $clear = true ): array
     {
         $bind = $this->bind;
-        if ($clear) {
+        if ( $clear ) {
             $this->bind = [];
         }
 

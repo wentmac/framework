@@ -27,6 +27,9 @@ class QueryBuilderDatabase
     use ParamsBind;
 
     protected $driverDatabase;
+    /**
+     * @var mixed|Connector\MysqlConnector|PDOConnection 
+     */
     protected $conn;
     protected $pk;
     private $primaryKey; //主键字段名

@@ -13,7 +13,6 @@ use Closure;
 trait Builder
 {
 
-
     public function build()
     {
         $this->conditionBuilders[ 'distinct' ] = $this->buildDistinct( $this->getOptions( 'distinct' ) );
@@ -29,7 +28,8 @@ trait Builder
         $this->conditionBuilders[ 'lock' ] = $this->buildLock( $this->getOptions( 'lock' ) );
         $this->conditionBuilders[ 'force' ] = $this->buildForce( $this->getOptions( 'force' ) );
 
-        return $this->getConn()->buildSelectSql( $this->conditionBuilders, $this->options );
+        $sql = $this->getConn()->buildSelectSql( $this->conditionBuilders, $this->options );
+        return $sql;
     }
 
     /**
@@ -45,7 +45,7 @@ trait Builder
             $this->options[ 'field' ] = $field;
         }
         $sql = $this->build();
-        $result = $this->getConn()->getOne( $sql );
+        $result = $this->getConn()->fetchColumn( $sql );
         if ( $result == false ) {
             return '';
         }
@@ -242,7 +242,7 @@ trait Builder
      * @param array $union
      * @return string
      */
-    protected function buildUnion( array $union ): string
+    protected function buildUnion( $union ): string
     {
         if ( empty( $union ) ) {
             return '';
@@ -386,11 +386,8 @@ trait Builder
             }
 
             $where = " {$logic} {$value['column']} {$value['operator']} ";
-            if ( $value[ 'value' ] instanceof TmacDbExpr ) {
-                $where .= "{$value['value']}";
-            } else {
-                $where .= "'{$value['value']}'";
-            }
+            //进行数据bindValue
+            $where .= $this->parseBuilderDataBind( $value[ 'column' ], $value[ 'value' ] );
         } elseif ( true === $value ) {
             $where = ' ' . $logic . ' 1 ';
         } elseif ( $value instanceof Closure ) {
@@ -405,6 +402,25 @@ trait Builder
     }
 
     /**
+     * 数据绑定处理
+     * @access protected
+     * @param Query $query 查询对象
+     * @param string $key 字段名
+     * @param mixed $data 数据
+     * @param array $bind 绑定数据
+     * @return string
+     */
+    private function parseBuilderDataBind( string $key, $value ): string
+    {
+        if ( $value instanceof TmacDbExpr ) {
+            return $value->getValue();
+        }
+        $name = $this->generateBindName( $key );
+        $this->bindValue( $value, $this->getConn()->getType( $value ), $name );
+        return ':' . $name;
+    }
+
+    /**
      * 去除查询参数
      * @access public
      * @param string $option 参数名 留空去除所有参数
@@ -414,7 +430,7 @@ trait Builder
     {
         if ( '' === $option ) {
             $this->options = [];
-            //todo $this->bind    = [];
+            $this->bind = [];
         } elseif ( isset( $this->options[ $option ] ) ) {
             unset( $this->options[ $option ] );
         }

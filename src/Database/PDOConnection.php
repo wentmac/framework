@@ -607,7 +607,7 @@ abstract class PDOConnection implements DatabaseInterface
      * @param array $types
      * @return int|mixed
      */
-    private function getType( $value )
+    public function getType( $value )
     {
         if ( is_int( $value ) ) {
             $type = PDO::PARAM_INT;
@@ -953,7 +953,7 @@ abstract class PDOConnection implements DatabaseInterface
             if ( $value === null ) {
                 continue;
             }
-            $conditions[] = $columnName . ' = ' . $this->parseDataBind( $columnName );;
+            $conditions[] = $columnName . ' = ' . $this->parseDataBind( $columnName, $value );
             $binds[ $columnName ] = $value;
         }
     }
@@ -977,12 +977,11 @@ abstract class PDOConnection implements DatabaseInterface
             return 0;
         }
         $columns = [];
-        $values = [];
         $set = [];
 
         foreach ( $data as $columnName => $value ) {
             $columns[] = $columnName;
-            $set[] = $this->parseDataBind( $columnName );
+            $set[] = $this->parseDataBind( $columnName, $value );
         }
 
         $sql = 'INSERT INTO ' . $table . ' (' . implode( ', ', $columns ) . ')' .
@@ -1009,16 +1008,11 @@ abstract class PDOConnection implements DatabaseInterface
             return 0;
         }
         $binds = [];
-        $values = [];
         $set = [];
         $conditions = [];
 
         foreach ( $data as $columnName => $value ) {
-            if ( $value instanceof TmacDbExpr ) {
-                $set[] = $columnName . '=' . $value;
-            } else {
-                $set[] = $columnName . '=' . $this->parseDataBind( $columnName );
-            }
+            $set[] = $columnName . '=' . $this->parseDataBind( $columnName, $value );
             $binds[ $columnName ] = $value;
         }
         $this->addIdentifierCondition( $identifier, $conditions, $binds );
@@ -1050,7 +1044,7 @@ abstract class PDOConnection implements DatabaseInterface
         $sql = 'DELETE FROM ' . $table . ' WHERE ' . implode( ' AND ', $conditions );
         return $this->execute( $sql, $binds );
     }
-    
+
     /**
      * Prepares and executes an SQL query and returns the value of a single column
      * of the first row of the result.
@@ -1174,9 +1168,13 @@ abstract class PDOConnection implements DatabaseInterface
      * @param array $bind 绑定数据
      * @return string
      */
-    protected function parseDataBind( string $name ): string
+    private function parseDataBind( string $name, $value ): string
     {
-        return ':' . $name;
+        if ( $value instanceof TmacDbExpr ) {
+            return $value->getValue();
+        } else {
+            return ':' . $name;
+        }
     }
 
     /**

@@ -36,7 +36,15 @@ class TmacDbExpr
     {
         $this->_expression = (string) $expression;
     }
-
+    /**
+     * 获取表达式
+     *
+     * @return string
+     */
+    public function getValue(): string
+    {
+        return $this->_expression;
+    }
     /**
      * @return string The string of the SQL expression stored in this object.
      */
