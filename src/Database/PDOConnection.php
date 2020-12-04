@@ -642,8 +642,26 @@ abstract class PDOConnection implements DatabaseInterface
             // 占位符
             $param = is_numeric( $key ) ? $key + 1 : ':' . $key;
 
-            $type = $this->getType( $value );
-            $result = $this->PDOStatement->bindValue( $param, $value, $type );
+            if ( is_array( $value ) ) {
+                /*
+                    支持数组模式来设置值和类型
+                    [             [
+                        'id' => [2,\PDO::PARAM_BOOL]
+                    ]
+                 */
+                if ( PDO::PARAM_INT == $value[ 1 ] && '' === $value[ 0 ] ) {
+                    $value[ 0 ] = 0;
+                } elseif ( self::PARAM_FLOAT == $value[ 1 ] ) {
+                    $value[ 0 ] = is_string( $value[ 0 ] ) ? (float) $value[ 0 ] : $value[ 0 ];
+                    $value[ 1 ] = PDO::PARAM_STR;
+                }
+                $variable = $value[ 0 ];
+                $data_type = $value[ 1 ];
+            } else {
+                $variable = $value;
+            }
+            $type = $data_type ?? $this->getType( $variable );
+            $result = $this->PDOStatement->bindValue( $param, $variable, $type );
 
             if ( !$result ) {
                 throw new BindParamException(
@@ -669,8 +687,15 @@ abstract class PDOConnection implements DatabaseInterface
             // 占位符
             $param = is_numeric( $key ) ? $key + 1 : ':' . $key;
 
-            $type = $this->getType( $binds[ $key ] );
-            $result = $this->PDOStatement->bindParam( $param, $binds[ $key ], $type );
+            if ( is_array( $value ) ) {
+                $variable = $value[ 0 ];
+                $data_type = $value[ 1 ];
+            } else {
+                $variable = $value;
+            }
+            $type = $data_type ?? $this->getType( $variable );
+            $result = $this->PDOStatement->bindParam( $param, $variable, $type );
+
 
             if ( !$result ) {
                 throw new BindParamException(
@@ -1064,8 +1089,8 @@ abstract class PDOConnection implements DatabaseInterface
      * Prepares and executes an SQL query and returns the value of a single column
      * of the first row of the result.
      * @param $query_sql
-     * @param array $params
-     * @param array $types
+     * @param mixed[] $params The prepared statement params.
+     * @param int $column The 0-indexed column number to retrieve.
      */
     public function fetchColumn( $query_sql, array $params = [], $column = 0, bool $master = false )
     {

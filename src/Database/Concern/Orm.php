@@ -4,9 +4,92 @@ declare ( strict_types=1 );
 namespace Tmac\Database\Concern;
 
 use Tmac\Database\TmacDbExpr;
+use Tmac\Exception\DbException;
 
 trait Orm
 {
+    /**
+     * 如果实体中包含主键的话，就是使用主键更新
+     * @param $entity
+     * @return mixed
+     * @throws DbException
+     */
+    public function update( $entity )
+    {
+        if ( !is_object( $entity ) ) {
+            throw new DbException( 'update database data must be entity' . var_export( $entity ) );
+        }
+        foreach ( $entity as $key => $value ) {
+            if ( isset ( $value ) === false ) {//排除掉对象值为空的
+                continue;
+            }
+            $primaryKeyField = $this->getPrimaryKey();
+            if ( !empty ( $primaryKeyField ) && $key === $primaryKeyField ) {//排除掉主键更新时的主键字段的误更新,并且把主键当成唯一更新条件
+                $this->where( $this->getPrimaryKey(), $value );
+                continue;
+            }
+            $set[] = $key . '=' . $this->parseBuilderDataBind( $key, $value );
+        }
+        $this->options[ 'data' ] = $set;
+        $sql = $this->getUpdateSql();
+        $binds = $this->getBind();
+        $res = $this->getConn()->execute( $sql, $binds );
+        return $res;
+
+    }
+
+    /**
+     * INSERT 语法
+     * @param $entity
+     * @return mixed
+     * @throws DbException
+     */
+    public function insert( $entity )
+    {
+        if ( !is_object( $entity ) ) {
+            throw new DbException( 'insert database data must be entity' . var_export( $entity ) );
+        }
+        foreach ( $entity as $key => $value ) {
+            if ( isset ( $value ) === false ) {//排除掉对象值为空的
+                continue;
+            }
+            $primaryKeyField = $this->getPrimaryKey();
+            if ( !empty ( $primaryKeyField ) && $key === $primaryKeyField ) {//insert时主键不需要插入
+                continue;
+            }
+            $columns[] = $key;
+            $set[] = $this->parseBuilderDataBind( $key, $value );
+        }
+        $this->options[ 'field' ] = $columns;
+        $this->options[ 'data' ] = $set;
+        $sql = $this->getInsertSql();
+        $binds = $this->getBind();
+        $res = $this->getConn()->execute( $sql, $binds );
+        return $res;
+    }
+
+    /**
+     * 批量新增
+     * @param array $dataSet
+     * @param int $limit
+     * @return mixed
+     * @throws DbException
+     */
+    public function insertAll( array $dataSet, int $limit = 0 )
+    {
+        if ( !is_object( $entity ) ) {
+            throw new DbException( 'insert database data must be entity' . var_export( $entity ) );
+        }
+        $sql = $this->getInsertAllSql( $dataSet, $limit );
+        $binds = $this->getBind();
+        $res = $this->getConn()->execute( $sql, $binds );
+        return $res;
+    }
+
+    public function delete()
+    {
+    }
+
     /**
      * Finds an entity by its primary key / identifier.
      *
@@ -15,13 +98,13 @@ trait Orm
      */
     public function find( $id )
     {
-        if ( !empty( $id ) ) {
-            $this->pk = $id;
+        if ( empty( $id ) ) {
+            throw new DbException( 'method find must need params:id' );
         }
-        $this->removeOption();
-        $this->where( $this->getPrimaryKey(), $this->pk );
-        $sql = $this->build();
-        $res = $this->getConn()->getRowObject( $sql );
+        $this->where( $this->getPrimaryKey(), $id );
+        $sql = $this->getSelectSql();
+        $binds = $this->getBind();
+        $res = $this->getConn()->fetchAssocObject( $sql, $binds, $this->getClassName() );
         return $res;
     }
 

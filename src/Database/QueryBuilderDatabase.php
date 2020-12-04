@@ -22,18 +22,20 @@ class QueryBuilderDatabase
 {
     use Orm;
     use Builder;
-    use Query;
     use AggregateQuery;
     use ParamsBind;
 
     protected $driverDatabase;
+
     /**
-     * @var mixed|Connector\MysqlConnector|PDOConnection 
+     * @var PDOConnection
      */
     protected $conn;
+
     protected $pk;
     private $primaryKey; //主键字段名
     protected $table;
+    protected $className;//实体类的className
     protected $field = '*';
     protected $countField = '*';
     protected $where;
@@ -78,11 +80,12 @@ class QueryBuilderDatabase
     /**
      * 初始化
      */
-    public function __construct( DriverDatabase $connection, $table, $primaryKey )
+    public function __construct( DriverDatabase $connection, $table, $className, $primaryKey )
     {
         $this->driverDatabase = $connection;
         $this->conn = $connection->getInstance();
         $this->table = $table;
+        $this->className = $className;
         $this->primaryKey = $primaryKey;
         $this->separator = $this->conn->getSeparator();
     }
@@ -97,6 +100,17 @@ class QueryBuilderDatabase
         return new static( $this->driverDatabase, $this->table, $this->primaryKey );
     }
 
+    /**
+     * @return mixed
+     */
+    public function getClassName()
+    {
+        return $this->className;
+    }
+
+    /**
+     * @return PDOConnection
+     */
     public function getConn()
     {
         return $this->conn;
@@ -230,7 +244,6 @@ class QueryBuilderDatabase
         $this->joinString = $joinString;
         return $this;
     }
-
 
 
     /**
@@ -600,7 +613,68 @@ class QueryBuilderDatabase
 
         return $this;
     }
-    
+
+
+    /**
+     * USING支持 用于多表删除
+     * @access public
+     * @param mixed $using USING
+     * @return $this
+     */
+    public function using( $using )
+    {
+        $this->options[ 'using' ] = $using;
+        return $this;
+    }
+
+    /**
+     * 存储过程调用
+     * @access public
+     * @param bool $procedure 是否为存储过程查询
+     * @return $this
+     */
+    public function procedure( bool $procedure = true )
+    {
+        $this->options[ 'procedure' ] = $procedure;
+        return $this;
+    }
+
+    /**
+     * 设置是否REPLACE
+     * @access public
+     * @param bool $replace 是否使用REPLACE写入数据
+     * @return $this
+     */
+    public function replace( bool $replace = true )
+    {
+        $this->options[ 'replace' ] = $replace;
+        return $this;
+    }
+
+    /**
+     * 设置当前查询所在的分区
+     * @access public
+     * @param string|array $partition 分区名称
+     * @return $this
+     */
+    public function partition( $partition )
+    {
+        $this->options[ 'partition' ] = $partition;
+        return $this;
+    }
+
+    /**
+     * 设置查询的额外参数
+     * @access public
+     * @param string $extra 额外信息
+     * @return $this
+     */
+    public function extra( string $extra )
+    {
+        $this->options[ 'extra' ] = $extra;
+        return $this;
+    }
+
 
     /**
      * todo 暂时没用

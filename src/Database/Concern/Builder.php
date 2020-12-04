@@ -13,7 +13,11 @@ use Closure;
 trait Builder
 {
 
-    public function build()
+    /**
+     * 生成查询sql语句
+     * @return mixed
+     */
+    public function getSelectSql()
     {
         $this->conditionBuilders[ 'distinct' ] = $this->buildDistinct( $this->getOptions( 'distinct' ) );
         $this->conditionBuilders[ 'select' ] = $this->buildSelect( $this->getOptions( 'field' ), $this->getOptions( 'distinct' ) );
@@ -28,9 +32,63 @@ trait Builder
         $this->conditionBuilders[ 'lock' ] = $this->buildLock( $this->getOptions( 'lock' ) );
         $this->conditionBuilders[ 'force' ] = $this->buildForce( $this->getOptions( 'force' ) );
 
-        $sql = $this->getConn()->buildSelectSql( $this->conditionBuilders, $this->options );
+        $sql = $this->getConn()->buildSelectSql( $this->conditionBuilders );
+        $this->removeOption();
         return $sql;
     }
+
+    /**
+     * 生成更新sql语句
+     * @return mixed
+     */
+    public function getUpdateSql()
+    {
+        $this->conditionBuilders[ 'extra' ] = $this->buildExtra( $this->getOptions( 'extra' ) );
+        $this->conditionBuilders[ 'table' ] = $this->getTable();
+        $this->conditionBuilders[ 'data' ] = $this->buildData( $this->getOptions( 'data' ) );
+        $this->conditionBuilders[ 'join' ] = $this->buildjoin( $this->getOptions( 'where' ) );
+        $this->conditionBuilders[ 'where' ] = $this->buildWhere( $this->getOptions( 'where' ) );
+        $this->conditionBuilders[ 'order' ] = $this->buildOrderBy( $this->getOptions( 'order' ) );
+        $this->conditionBuilders[ 'limit' ] = $this->buildLimit( $this->getOptions( 'limit' ) );
+        $this->conditionBuilders[ 'lock' ] = $this->buildLock( $this->getOptions( 'lock' ) );
+
+        $sql = $this->getConn()->buildUpdateSql( $this->conditionBuilders );
+        $this->removeOption();
+        return $sql;
+    }
+
+    /**
+     * 生成新增sql语句
+     * @return mixed
+     */
+    public function getInsertSql()
+    {
+        $this->conditionBuilders[ 'replace' ] = $this->getOptions( 'replace' );
+        $this->conditionBuilders[ 'extra' ] = $this->buildExtra( $this->getOptions( 'extra' ) );
+        $this->conditionBuilders[ 'table' ] = $this->getTable();
+        $this->conditionBuilders[ 'field' ] = $this->buildData( $this->getOptions( 'field' ) );
+        $this->conditionBuilders[ 'data' ] = $this->buildData( $this->getOptions( 'data' ) );
+
+        $sql = $this->getConn()->buildInsertSql( $this->conditionBuilders );
+        $this->removeOption();
+        return $sql;
+    }
+
+    /**
+     * 生成新增all sql语句
+     * @return mixed
+     */
+    public function getInsertAllSql( array $dataSet, int $limit = 0 )
+    {
+        $this->conditionBuilders[ 'replace' ] = $this->getOptions( 'replace' );
+        $this->conditionBuilders[ 'extra' ] = $this->buildExtra( $this->getOptions( 'extra' ) );
+        $this->conditionBuilders[ 'table' ] = $this->getTable();
+        $this->conditionBuilders[ 'data' ] = $this->buildData( $this->getOptions( 'data' ) );
+
+        $sql = $this->getConn()->buildInserAllSql( $this->conditionBuilders );
+        return $sql;
+    }
+
 
     /**
      * 得到某个字段的值
@@ -44,10 +102,11 @@ trait Builder
         if ( $this->getOptions( 'field' ) !== null ) {
             $this->options[ 'field' ] = $field;
         }
-        $sql = $this->build();
-        $result = $this->getConn()->fetchColumn( $sql );
+        $sql = $this->getSelectSql();
+        $binds = $this->getBind();
+        $result = $this->getConn()->fetchColumn( $sql, $binds );
         if ( $result == false ) {
-            return '';
+            return $default;
         }
         return $result;
     }
@@ -161,6 +220,15 @@ trait Builder
         return 'FROM ' . $table;
     }
 
+    /**
+     * 解析要更新语句
+     * @param array $data
+     * @return string
+     */
+    protected function buildData( array $data ): string
+    {
+        return implode( ',', $data );
+    }
 
     /**
      * 解析field
@@ -430,11 +498,54 @@ trait Builder
     {
         if ( '' === $option ) {
             $this->options = [];
-            $this->bind = [];
         } elseif ( isset( $this->options[ $option ] ) ) {
             unset( $this->options[ $option ] );
         }
 
         return $this;
     }
+
+    /**
+     * 随机排序
+     * @access protected
+     * @return string
+     */
+    protected function buildRand(): string
+    {
+        return 'rand()';
+    }
+
+    /**
+     * 查询额外参数分析
+     * @access protected
+     * @param string $extra 额外参数
+     * @return string
+     */
+    protected function buildExtra( $extra = '' ): string
+    {
+        if ( empty( $extra ) ) {
+            return '';
+        }
+        return preg_match( '/^[\w]+$/i', $extra ) ? ' ' . strtoupper( $extra ) : '';
+    }
+
+    /**
+     * Partition 分析
+     * @access protected
+     * @param string|array $partition 分区
+     * @return string
+     */
+    protected function buildPartition( $partition ): string
+    {
+        if ( '' == $partition ) {
+            return '';
+        }
+
+        if ( is_string( $partition ) ) {
+            $partition = explode( ',', $partition );
+        }
+
+        return ' PARTITION (' . implode( ' , ', $partition ) . ') ';
+    }
+
 }
