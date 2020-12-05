@@ -36,7 +36,7 @@ class DriverDatabase
     protected $instance;
 
     /**
-     * @return mixed
+     * @return mixed|PDOConnection
      */
     public function getInstance()
     {
