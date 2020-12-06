@@ -16,9 +16,9 @@ use Tmac\Contract\DatabaseInterface;
 class EntityRepositoryDatabase extends QueryBuilderDatabase
 {
 
-    public function __construct( DriverDatabase $connection, $table_name, $class_name, $primaryKey )
+    public function __construct( DriverDatabase $connection, $table_name, $class_name, $schema, $primaryKey )
     {
-        parent::__construct( $connection, $table_name, $class_name, $primaryKey );
+        parent::__construct( $connection, $table_name, $class_name, $schema, $primaryKey );
 
     }
 

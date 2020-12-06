@@ -12,6 +12,7 @@ use Tmac\Cache\DriverCache;
 use Tmac\Container;
 use Tmac\Contract\ConfigInterface;
 use Tmac\Database\PDOConnection;
+use Tmac\Database\TmacDbExpr;
 use Tmac\Debug;
 use Tmac\Exception\TmacException;
 
@@ -125,6 +126,27 @@ class MysqlConnector extends PDOConnection
         return $sql;
     }
 
+    /**
+     * 创建生成删除sql语句
+     * @param $conditionBuilders
+     * @return string
+     */
+    public function buildDeleteSql( $conditionBuilders )
+    {
+        $clauses = [
+            'DELETE',
+            $conditionBuilders[ 'extra' ],
+            'FROM',
+            $conditionBuilders[ 'table' ],
+            $conditionBuilders[ 'join' ],
+            $conditionBuilders[ 'where' ],
+            $conditionBuilders[ 'order' ],
+            $conditionBuilders[ 'limit' ],
+            $conditionBuilders[ 'lock' ]
+        ];
+        $sql = implode( $this->separator, array_filter( $clauses ) );
+        return $sql;
+    }
 
     /**
      * @param $dataSet
@@ -139,8 +161,7 @@ class MysqlConnector extends PDOConnection
 
         $values = [];
         foreach ( $dataSet as $index => $data ) {
-            $bind = $this->parseBatchData( $index, $data );
-            $values[] = '( ' . implode( ',', array_keys( $bind ) ) . ' )';
+            $values[] = '( ' . implode( ',', array_values( $data ) ) . ' )';
 
             if ( !isset( $insertFields ) ) {
                 $insertFields = array_keys( $data );
@@ -169,20 +190,21 @@ class MysqlConnector extends PDOConnection
      * @param $dataSet
      * @return array
      */
-    private function getInserAllSql( $table, $dataSet )
+    private function getInserAllSql( $table, $dataSet, $replace = false )
     {
         $values = [];
         $binds = [];
         foreach ( $dataSet as $index => $data ) {
-            $bind = $this->parseBatchData( $index, $data );
+            $bind = $this->parseBatchInsertData( $index, $data );
             $values[] = '( ' . implode( ',', array_keys( $bind ) ) . ' )';
 
             if ( !isset( $insertFields ) ) {
                 $insertFields = array_keys( $data );
             }
         }
-        
-        $sql = 'INSERT INTO ' . $table . ' (' . implode( ', ', $insertFields ) . ')' .
+
+        $insert_type = $replace ? 'REPLACE' : 'INSERT';
+        $sql = $insert_type . ' INTO ' . $table . ' (' . implode( ', ', $insertFields ) . ')' .
             ' VALUES ' . implode( ', ', $values );
 
         return $sql;
@@ -236,12 +258,16 @@ class MysqlConnector extends PDOConnection
      * @param $data
      * @return array
      */
-    private function parseBatchData( $k, $data )
+    private function parseBatchInsertData( $k, $data )
     {
         $bind = [];
         foreach ( $data as $key => $value ) {
-            $name = 'TmacBind_' . $k . '_' . $key . '_';
-            $bind[ ':' . $name ] = $this->binds[ $name ] = $value;
+            if ( $value instanceof TmacDbExpr ) {
+                $bind[ $key ] = $value->getValue();
+            } else {
+                $name = 'TmacBind_' . $k . '_' . $key . '_';
+                $bind[ ':' . $name ] = $this->binds[ $name ] = $value;
+            }
         }
         return $bind;
     }

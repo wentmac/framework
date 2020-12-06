@@ -36,6 +36,8 @@ class QueryBuilderDatabase
     private $primaryKey; //主键字段名
     protected $table;
     protected $className;//实体类的className
+    protected $schema;//实体类的数据表的schema
+
     protected $field = '*';
     protected $countField = '*';
     protected $where;
@@ -80,7 +82,7 @@ class QueryBuilderDatabase
     /**
      * 初始化
      */
-    public function __construct( DriverDatabase $connection, $table, $className, $primaryKey )
+    public function __construct( DriverDatabase $connection, $table, $className, $schema, $primaryKey )
     {
         $this->driverDatabase = $connection;
         $this->conn = $connection->getInstance();
@@ -97,7 +99,7 @@ class QueryBuilderDatabase
      */
     public function newQuery(): QueryBuilderDatabase
     {
-        return new static( $this->driverDatabase, $this->table, $this->primaryKey );
+        return new static( $this->driverDatabase, $this->table, $this->className, $this->schema, $this->primaryKey );
     }
 
     /**
@@ -106,6 +108,14 @@ class QueryBuilderDatabase
     public function getClassName()
     {
         return $this->className;
+    }
+
+    /**
+     * @return mixed
+     */
+    public function getSchema()
+    {
+        return $this->schema;
     }
 
     /**
@@ -227,6 +237,74 @@ class QueryBuilderDatabase
         return $this->options[ $name ] ?? null;
     }
 
+    /**
+     * 分析表达式（可用于查询或者写入操作）
+     * @access public
+     * @return array
+     */
+    public function parseOptions(): array
+    {
+        $options = $this->getOptions();
+
+        // 获取数据表
+        if ( empty( $options[ 'table' ] ) ) {
+            if ( !empty( $this->options[ 'alias' ][ $table ] ) ) {
+                $alias = $this->options[ 'alias' ][ $table ];
+                $options[ 'table' ] = $this->getTable() . ' ' . $alias;
+            } else {
+                $options[ 'table' ] = $this->getTable();
+            }
+        }
+
+        if ( !isset( $options[ 'where' ] ) ) {
+            $options[ 'where' ] = [];
+        }
+
+        if ( !isset( $options[ 'field' ] ) ) {
+            $options[ 'field' ] = '*';
+        }
+
+        foreach ( [ 'data', 'order', 'join', 'union' ] as $name ) {
+            if ( !isset( $options[ $name ] ) ) {
+                $options[ $name ] = [];
+            }
+        }
+
+        foreach ( [ 'master', 'lock', 'fetch_sql', 'distinct', 'procedure' ] as $name ) {
+            if ( !isset( $options[ $name ] ) ) {
+                $options[ $name ] = false;
+            }
+        }
+
+        foreach ( [ 'group', 'having', 'limit', 'force', 'comment', 'partition', 'duplicate', 'extra' ] as $name ) {
+            if ( !isset( $options[ $name ] ) ) {
+                $options[ $name ] = '';
+            }
+        }
+
+        $this->options = $options;
+
+        return $options;
+    }
+
+    /**
+     * 指定数据表别名
+     * @access public
+     * @param array|string $alias 数据表别名
+     * @return $this
+     */
+    public function alias( $alias )
+    {
+        if ( is_array( $alias ) ) {
+            $this->options[ 'alias' ] = $alias;
+        } else {
+            $table = $this->getTable();
+
+            $this->options[ 'alias' ][ $table ] = $alias;
+        }
+
+        return $this;
+    }
 
     /**
      * @return mixed
@@ -249,30 +327,100 @@ class QueryBuilderDatabase
     /**
      * join子句查询
      * 支持  left|right|outer|inner|left outer|right outer
-     *
-     * $dao = dao_factory_base::getGoodsDao();
-     * $goods_image_dao = dao_factory_base::getGoodsImageDao();
-     * $dao->join($goods_image_dao->getTable(),$goods_image_dao->getTable().'goods_id='.$dao->getTable().'.goods_id','left');
-     * $dao->setWhere($goods_image_dao->getTable().'.uid='.$uid);
-     * $res = $dao->getListByWhere();
+     * 查询SQL组装 join
      *
      * @param type $joinTable 表名
      * @param type $on join时候的on语句
      * @param type $joinType 联表的类型
      * @return type
      */
-    public function join( $joinTable, $on, $joinType = '' )
+    public function join( $join, string $condition = null, string $type = 'INNER', array $bind = [] )
     {
-        $joinTypeArray = array( 'LEFT', 'RIGHT', 'OUTER', 'INNER', 'LEFT OUTER', 'RIGHT OUTER' );
-        $joinTypeString = 'JOIN'; //默认joinType为空时 是JOIN
-        if ( !empty( $joinType ) ) {
-            $joinType = strtoupper( $joinType );
-            if ( in_array( $joinType, $joinTypeArray ) ) {
-                $joinTypeString = $joinType . ' JOIN';
+        $table = $this->getJoinTable( $join );
+
+        if ( !empty( $bind ) && $condition ) {
+            $this->bindParams( $condition, $bind );
+        }
+
+        $this->options[ 'join' ][] = [ $table, strtoupper( $type ), $condition ];
+
+        return $this;
+    }
+
+    /**
+     * LEFT JOIN
+     * @access public
+     * @param mixed $join 关联的表名
+     * @param mixed $condition 条件
+     * @param array $bind 参数绑定
+     * @return $this
+     */
+    public function leftJoin( $join, string $condition = null, array $bind = [] )
+    {
+        return $this->join( $join, $condition, 'LEFT', $bind );
+    }
+
+    /**
+     * RIGHT JOIN
+     * @access public
+     * @param mixed $join 关联的表名
+     * @param mixed $condition 条件
+     * @param array $bind 参数绑定
+     * @return $this
+     */
+    public function rightJoin( $join, string $condition = null, array $bind = [] )
+    {
+        return $this->join( $join, $condition, 'RIGHT', $bind );
+    }
+
+    /**
+     * FULL JOIN
+     * @access public
+     * @param mixed $join 关联的表名
+     * @param mixed $condition 条件
+     * @param array $bind 参数绑定
+     * @return $this
+     */
+    public function fullJoin( $join, string $condition = null, array $bind = [] )
+    {
+        return $this->join( $join, $condition, 'FULL' );
+    }
+
+    /**
+     * 获取Join表名及别名 支持
+     * ['prefix_table或者子查询'=>'alias'] 'table alias'
+     * @access protected
+     * @param array|string|Raw $join JION表名
+     * @param string $alias 别名
+     * @return string|array
+     */
+    protected function getJoinTable( $join )
+    {
+        if ( is_array( $join ) ) {
+            return $join[ 0 ] . ' ' . $join[ 1 ];
+        } elseif ( $join instanceof Raw ) {
+            return $join;
+        }
+
+        $join = trim( $join );
+
+        if ( false !== strpos( $join, '(' ) ) {
+            // 使用子查询
+            return $join;
+        }
+        // 使用别名
+        if ( strpos( $join, ' ' ) ) {
+            // 使用别名
+            [ $table, $alias ] = explode( ' ', $join );
+        } else {
+            $table = $join;
+            if ( false === strpos( $join, '.' ) ) {
+                $alias = $join;
             }
         }
-        $this->joinString = $joinTypeString . ' ' . $joinTable . ' ON ' . $on;
-        return $this;
+
+
+        return $table;
     }
 
 
@@ -294,7 +442,7 @@ class QueryBuilderDatabase
         if ( $column instanceof Closure ) {
             $subWhereSql = $this->parseClosureWhere( $this->newQuery(), $column, $boolean );
             if ( $subWhereSql ) {
-                $value = new Raw( $subWhereSql );
+                $value = new TmacDbExpr( $subWhereSql );
                 $type = 'raw';
                 $this->options[ 'where' ][] = compact(
                     'type', 'value', 'boolean'
@@ -435,12 +583,16 @@ class QueryBuilderDatabase
             return $this;
         }
         if ( is_string( $columns ) ) {
-            $this->options[ 'order' ] = "{$columns} {$direction}";
+            //取了别名后的
+            $key = $this->parseKey( $columns );
+            $this->options[ 'order' ] = "{$key} {$direction}";
         } elseif ( is_array( $columns ) ) {
             $orderArray = [];
             foreach ( $columns as $column => $order ) {
                 $order = $this->checkOrderByDirction( $order );
-                $orderArray[] = "{$column} {$order}";
+                //取了别名后的
+                $key = $this->parseKey( $column );
+                $orderArray[] = "{$key} {$order}";
             }
             $this->options[ 'order' ] = implode( ',', $orderArray );
         }
@@ -526,7 +678,11 @@ class QueryBuilderDatabase
     public function group( $group )
     {
         $group = is_array( $group ) ? $group : func_get_args();
-        $this->options[ 'group' ] = implode( ',', $group );
+        $group_array = [];
+        foreach ( $group as $column ) {
+            $group_array[] = $this->parseKey( $column );
+        }
+        $this->options[ 'group' ] = implode( ',', $group_array );
         return $this;
     }
 
@@ -675,6 +831,17 @@ class QueryBuilderDatabase
         return $this;
     }
 
+    /**
+     * 获取执行的SQL语句而不进行实际的查询
+     * @access public
+     * @param bool $fetch 是否返回sql
+     * @return $this|Fetch
+     */
+    public function fetchSql( bool $fetch = true )
+    {
+        $this->options[ 'fetch_sql' ] = $fetch;
+        return $this;
+    }
 
     /**
      * todo 暂时没用

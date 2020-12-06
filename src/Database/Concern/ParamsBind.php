@@ -40,8 +40,11 @@ trait ParamsBind
     protected function bindValue( $value, int $type = null, string $name = null )
     {
         $name = $name ? : 'TmacBind_' . ( count( $this->bind ) + 1 ) . '_' . mt_rand();
-
-        $this->bind[ $name ] = [ $value, $type ? : PDO::PARAM_STR ];
+        
+        if ( empty( $type ) ) {//根据数据    取 bindType
+            $type = $this->getConn()->getType( $value );
+        }
+        $this->bind[ $name ] = [ $value, $type ];
         return $name;
     }
 
@@ -53,24 +56,6 @@ trait ParamsBind
     protected function generateBindName( string $name )
     {
         return 'TmacBind' . '_' . ( count( $this->bind ) + 1 ) . '_' . $name;
-    }
-
-    /**
-     * Bind values to their parameters in the given statement.
-     *
-     * @param \PDOStatement $statement
-     * @param array $bindings
-     * @return void
-     */
-    private function bindValues( $statement, $bindings )
-    {
-        foreach ( $bindings as $key => $value ) {
-            $statement->bindValue(
-                is_string( $key ) ? $key : $key + 1,
-                $value,
-                is_int( $value ) ? PDO::PARAM_INT : PDO::PARAM_STR
-            );
-        }
     }
 
 

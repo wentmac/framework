@@ -609,20 +609,26 @@ abstract class PDOConnection implements DatabaseInterface
      */
     public function getType( $value )
     {
-        if ( is_int( $value ) ) {
-            $type = PDO::PARAM_INT;
-        } elseif ( is_string( $value ) ) {
-            $type = PDO::PARAM_STR;
-        } elseif ( is_resource( $value ) ) {
-            $type = PDO::PARAM_LOB;
-        } else {
-            $type = PDO::PARAM_STR;
+        switch( true ) {
+            case is_string($value):
+                $type = PDO::PARAM_STR;
+                break;
+            case is_int( $value ):
+                $type = PDO::PARAM_INT;
+                break;
+            case is_bool( $value ):
+                $type = PDO::PARAM_BOOL;
+                break;
+            case is_null( $value ):
+                $type = PDO::PARAM_NULL;
+                break;
+            case is_resource( $value ):
+                $type = PDO::PARAM_LOB;
+                break;
+            default:
+                $type = PDO::PARAM_STR;
+                break;
         }
-        /*
-        if ( isset( $types[ $param ] ) ) {
-            $type = $types[ $param ];
-        }
-        */
         return $type;
     }
 
@@ -1013,8 +1019,7 @@ abstract class PDOConnection implements DatabaseInterface
             ' VALUES (' . implode( ', ', $set ) . ')';
         $result = '' == $sql ? 0 : $this->execute( $sql, $data );
         if ( $result ) {
-            $last_insert_id = $this->getLastInsID();
-            return $last_insert_id;
+            return $this->getLastInsID();
         }
         return false;
     }
@@ -1081,6 +1086,7 @@ abstract class PDOConnection implements DatabaseInterface
     {
         $this->getPDOStatement( $query_sql, $params, $master );
         $result = $this->PDOStatement->fetch( $this->fetchType );
+        echo $this->getLastSql();
         $this->numRows = count( $result );
         return $result;
     }

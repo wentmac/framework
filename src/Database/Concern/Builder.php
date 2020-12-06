@@ -19,18 +19,19 @@ trait Builder
      */
     public function getSelectSql()
     {
-        $this->conditionBuilders[ 'distinct' ] = $this->buildDistinct( $this->getOptions( 'distinct' ) );
-        $this->conditionBuilders[ 'select' ] = $this->buildSelect( $this->getOptions( 'field' ), $this->getOptions( 'distinct' ) );
-        $this->conditionBuilders[ 'from' ] = $this->buildFrom( $this->getOptions( 'table' ) );
-        $this->conditionBuilders[ 'join' ] = $this->buildjoin( $this->getOptions( 'where' ) );
-        $this->conditionBuilders[ 'where' ] = $this->buildWhere( $this->getOptions( 'where' ) );
-        $this->conditionBuilders[ 'group' ] = $this->buildGroupBy( $this->getOptions( 'group' ) );
-        $this->conditionBuilders[ 'having' ] = $this->buildHaving( $this->getOptions( 'having' ) );
-        $this->conditionBuilders[ 'order' ] = $this->buildOrderBy( $this->getOptions( 'order' ) );
-        $this->conditionBuilders[ 'limit' ] = $this->buildLimit( $this->getOptions( 'limit' ) );
-        $this->conditionBuilders[ 'union' ] = $this->buildUnion( $this->getOptions( 'union' ) );
-        $this->conditionBuilders[ 'lock' ] = $this->buildLock( $this->getOptions( 'lock' ) );
-        $this->conditionBuilders[ 'force' ] = $this->buildForce( $this->getOptions( 'force' ) );
+        $options = $this->parseOptions();
+        $this->conditionBuilders[ 'distinct' ] = $this->buildDistinct( $options[ 'distinct' ] );
+        $this->conditionBuilders[ 'select' ] = $this->buildSelect( $options[ 'field' ], $options[ 'distinct' ] );
+        $this->conditionBuilders[ 'from' ] = $this->buildFrom( $options[ 'table' ] );
+        $this->conditionBuilders[ 'join' ] = $this->buildJoin( $options[ 'join' ] );
+        $this->conditionBuilders[ 'where' ] = $this->buildWhere( $options[ 'where' ] );
+        $this->conditionBuilders[ 'group' ] = $this->buildGroupBy( $options[ 'group' ] );
+        $this->conditionBuilders[ 'having' ] = $this->buildHaving( $options[ 'having' ] );
+        $this->conditionBuilders[ 'order' ] = $this->buildOrderBy( $options[ 'order' ] );
+        $this->conditionBuilders[ 'limit' ] = $this->buildLimit( $options[ 'limit' ] );
+        $this->conditionBuilders[ 'union' ] = $this->buildUnion( $options[ 'union' ] );
+        $this->conditionBuilders[ 'lock' ] = $this->buildLock( $options[ 'lock' ] );
+        $this->conditionBuilders[ 'force' ] = $this->buildForce( $options[ 'force' ] );
 
         $sql = $this->getConn()->buildSelectSql( $this->conditionBuilders );
         $this->removeOption();
@@ -43,14 +44,15 @@ trait Builder
      */
     public function getUpdateSql()
     {
-        $this->conditionBuilders[ 'extra' ] = $this->buildExtra( $this->getOptions( 'extra' ) );
-        $this->conditionBuilders[ 'table' ] = $this->getTable();
-        $this->conditionBuilders[ 'data' ] = $this->buildData( $this->getOptions( 'data' ) );
-        $this->conditionBuilders[ 'join' ] = $this->buildjoin( $this->getOptions( 'where' ) );
-        $this->conditionBuilders[ 'where' ] = $this->buildWhere( $this->getOptions( 'where' ) );
-        $this->conditionBuilders[ 'order' ] = $this->buildOrderBy( $this->getOptions( 'order' ) );
-        $this->conditionBuilders[ 'limit' ] = $this->buildLimit( $this->getOptions( 'limit' ) );
-        $this->conditionBuilders[ 'lock' ] = $this->buildLock( $this->getOptions( 'lock' ) );
+        $options = $this->parseOptions();
+        $this->conditionBuilders[ 'extra' ] = $this->buildExtra( $options[ 'extra' ] );
+        $this->conditionBuilders[ 'table' ] = $options[ 'table' ];
+        $this->conditionBuilders[ 'data' ] = $this->buildData( $options[ 'data' ] );
+        $this->conditionBuilders[ 'join' ] = $this->buildJoin( $options[ 'join' ] );
+        $this->conditionBuilders[ 'where' ] = $this->buildWhere( $options[ 'where' ] );
+        $this->conditionBuilders[ 'order' ] = $this->buildOrderBy( $options[ 'order' ] );
+        $this->conditionBuilders[ 'limit' ] = $this->buildLimit( $options[ 'limit' ] );
+        $this->conditionBuilders[ 'lock' ] = $this->buildLock( $options[ 'lock' ] );
 
         $sql = $this->getConn()->buildUpdateSql( $this->conditionBuilders );
         $this->removeOption();
@@ -63,11 +65,12 @@ trait Builder
      */
     public function getInsertSql()
     {
-        $this->conditionBuilders[ 'replace' ] = $this->getOptions( 'replace' );
-        $this->conditionBuilders[ 'extra' ] = $this->buildExtra( $this->getOptions( 'extra' ) );
-        $this->conditionBuilders[ 'table' ] = $this->getTable();
-        $this->conditionBuilders[ 'field' ] = $this->buildData( $this->getOptions( 'field' ) );
-        $this->conditionBuilders[ 'data' ] = $this->buildData( $this->getOptions( 'data' ) );
+        $options = $this->parseOptions();
+        $this->conditionBuilders[ 'replace' ] = $options[ 'replace' ];
+        $this->conditionBuilders[ 'extra' ] = $this->buildExtra( $options[ 'extra' ] );
+        $this->conditionBuilders[ 'table' ] = $options[ 'table' ];
+        $this->conditionBuilders[ 'field' ] = $this->buildData( $options[ 'field' ] );
+        $this->conditionBuilders[ 'data' ] = $this->buildData( $options[ 'data' ] );
 
         $sql = $this->getConn()->buildInsertSql( $this->conditionBuilders );
         $this->removeOption();
@@ -78,17 +81,38 @@ trait Builder
      * 生成新增all sql语句
      * @return mixed
      */
-    public function getInsertAllSql( array $dataSet, int $limit = 0 )
+    public function getInsertAllSql( array $data, int $limit = 0 )
     {
-        $this->conditionBuilders[ 'replace' ] = $this->getOptions( 'replace' );
-        $this->conditionBuilders[ 'extra' ] = $this->buildExtra( $this->getOptions( 'extra' ) );
-        $this->conditionBuilders[ 'table' ] = $this->getTable();
-        $this->conditionBuilders[ 'data' ] = $this->buildData( $this->getOptions( 'data' ) );
+        $options = $this->parseOptions();
+        $this->conditionBuilders[ 'replace' ] = $options[ 'replace' ];
+        $this->conditionBuilders[ 'extra' ] = $this->buildExtra( $options[ 'extra' ] );
+        $this->conditionBuilders[ 'table' ] = $options[ 'table' ];
+        $this->conditionBuilders[ 'data' ] = $data;
 
         $sql = $this->getConn()->buildInserAllSql( $this->conditionBuilders );
+        $this->removeOption();
         return $sql;
     }
 
+    /**
+     * 生成删除sql语句
+     * @return mixed
+     */
+    public function getDeleteSql()
+    {
+        $options = $this->parseOptions();
+        $this->conditionBuilders[ 'extra' ] = $this->buildExtra( $options[ 'extra' ] );
+        $this->conditionBuilders[ 'table' ] = $options[ 'table' ];
+        $this->conditionBuilders[ 'join' ] = $this->buildJoin( $options[ 'join' ] );
+        $this->conditionBuilders[ 'where' ] = $this->buildWhere( $options[ 'where' ] );
+        $this->conditionBuilders[ 'order' ] = $this->buildOrderBy( $options[ 'order' ] );
+        $this->conditionBuilders[ 'limit' ] = $this->buildLimit( $options[ 'limit' ] );
+        $this->conditionBuilders[ 'lock' ] = $this->buildLock( $options[ 'lock' ] );
+
+        $sql = $this->getConn()->buildDeleteSql( $this->conditionBuilders );
+        $this->removeOption();
+        return $sql;
+    }
 
     /**
      * 得到某个字段的值
@@ -99,7 +123,8 @@ trait Builder
      */
     public function value( string $field, $default = null )
     {
-        if ( $this->getOptions( 'field' ) !== null ) {
+        $options = $this->parseOptions();
+        if ( $options[ 'field' ] !== null ) {
             $this->options[ 'field' ] = $field;
         }
         $sql = $this->getSelectSql();
@@ -211,13 +236,16 @@ trait Builder
      * @param $table
      * @return string
      */
-    protected function buildjoin( $table ): string
+    protected function buildJoin( array $join = [] ): string
     {
-        return '';
-        if ( empty( $table ) ) {
-            return $this->getTable();
+        $joinStr = '';
+        foreach ( $join as $item ) {
+            [ $table, $type, $on ] = $item;
+            $condition = $on;
+            $joinStr .= ' ' . $type . ' JOIN ' . $table . ' ON ' . $condition;
         }
-        return 'FROM ' . $table;
+
+        return $joinStr;
     }
 
     /**
@@ -452,8 +480,9 @@ trait Builder
             if ( key( $value ) === 0 ) {
                 throw new Exception( 'where express error:' . var_export( $value, true ) );
             }
-
-            $where = " {$logic} {$value['column']} {$value['operator']} ";
+            //取了别名后的
+            $column = $this->parseKey($value['column']);
+            $where = " {$logic} {$column} {$value['operator']} ";
             //进行数据bindValue
             $where .= $this->parseBuilderDataBind( $value[ 'column' ], $value[ 'value' ] );
         } elseif ( true === $value ) {
@@ -467,6 +496,24 @@ trait Builder
         }
 
         return $where;
+    }
+
+    /**
+     * 解析正确的key名。主要是为了alias
+     * @param $key
+     * @return string
+     */
+    private function parseKey( $key )
+    {
+        //判断别名
+        $alias = $this->getOptions( 'alias' );
+        $table = $this->getTable();
+        if ( isset( $alias[ $table ] ) ) {
+            $column = $alias[ $table ] . '.' . $key;
+        } else {
+            $column = $key;
+        }
+        return $column;
     }
 
     /**
@@ -484,7 +531,14 @@ trait Builder
             return $value->getValue();
         }
         $name = $this->generateBindName( $key );
-        $this->bindValue( $value, $this->getConn()->getType( $value ), $name );
+
+        //直接从Repository中取字段的schema的类型。减少很个字段的判断
+        if ( empty( $this->schema[ $key ] ) ) {
+            $type = null;
+        } else {
+            $type = $this->schema[ $key ];
+        }
+        $this->bindValue( $value, $type, $name );
         return ':' . $name;
     }
 
@@ -498,8 +552,9 @@ trait Builder
     {
         if ( '' === $option ) {
             $this->options = [];
+            $this->conditionBuilders = [];
         } elseif ( isset( $this->options[ $option ] ) ) {
-            unset( $this->options[ $option ] );
+            unset( $this->options[ $option ], $this->conditionBuilders[ $option ] );
         }
 
         return $this;
