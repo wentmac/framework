@@ -239,6 +239,15 @@ abstract class PDOConnection implements DatabaseInterface
         return $this->separator;
     }
 
+    /**
+     * @return mixed
+     */
+    public function getConfig()
+    {
+        return $this->config;
+    }
+
+
     protected function __construct( $config, $app_debug = false, Debug $debug, DriverCache $cache )
     {
         $this->config = $config;
@@ -465,22 +474,20 @@ abstract class PDOConnection implements DatabaseInterface
 
     /**
      * 执行一条SQL查询语句 返回资源标识符  返回数据集
-     * @access public
-     * @param mixed $sql sql指令
-     * @param array $bind 参数绑定
-     * @return array
+     * @param $sql
+     * @param array $binds
+     * @param bool $master
+     * @return PDOStatement
      * @throws BindParamException
-     * @throws \PDOException
-     * @throws \Exception
      * @throws \Throwable
      */
-    public function query( $sql, array $binds = [], bool $master = false ): array
+    public function query( $sql, array $binds = [], bool $master = false ): PDOStatement
     {
-        $this->getPDOStatement( $sql, $binds, $master );
+        $sth = $this->getPDOStatement( $sql, $binds, $master );
 
-        $resultSet = $this->getResult( $procedure = false );
+        //$resultSet = $this->getResult( $procedure = false );
 
-        return $resultSet;
+        return $sth;
     }
 
 
@@ -609,8 +616,8 @@ abstract class PDOConnection implements DatabaseInterface
      */
     public function getType( $value )
     {
-        switch( true ) {
-            case is_string($value):
+        switch ( true ) {
+            case is_string( $value ):
                 $type = PDO::PARAM_STR;
                 break;
             case is_int( $value ):
@@ -713,28 +720,6 @@ abstract class PDOConnection implements DatabaseInterface
             }
         }
     }
-
-
-    /**
-     * 获得数据集数组
-     * @access protected
-     * @param bool $procedure 是否存储过程
-     * @return array
-     */
-    protected function getResult( bool $procedure = false ): array
-    {
-        if ( $procedure ) {
-            // 存储过程返回结果
-            return $this->procedure();
-        }
-
-        $result = $this->PDOStatement->fetchAll( $this->fetchType );
-
-        $this->numRows = count( $result );
-
-        return $result;
-    }
-
 
     /**
      * 获得存储过程数据集
@@ -1086,7 +1071,6 @@ abstract class PDOConnection implements DatabaseInterface
     {
         $this->getPDOStatement( $query_sql, $params, $master );
         $result = $this->PDOStatement->fetch( $this->fetchType );
-        echo $this->getLastSql();
         $this->numRows = count( $result );
         return $result;
     }

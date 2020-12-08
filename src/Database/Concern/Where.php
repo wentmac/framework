@@ -1,381 +1,184 @@
 <?php
-declare (strict_types = 1);
+declare ( strict_types=1 );
 
 namespace Tmac\Database\Concern;
 
-use Tmac\Database\TmacDbExpr;
+use Tmac\Database\QueryBuilderDatabase;
+use Tmac\Database\Raw;
 
 trait Where
 {
 
-    public function findByNot( array $criteria, array $orderBy = null, $limit = null, $offset = null )
+
+    /**
+     * where解析
+     * @param $column
+     * @param null $operator
+     * @param null $value
+     * @param string $boolean
+     * @return $this|QueryBuilderDatabase
+     */
+    private function parseWhereExp( $column, $operator = null, $value = null, $boolean = 'and' )
     {
-        $qb = $this->getEntityManager()->createQueryBuilder();
-        $expr = $this->getEntityManager()->getExpressionBuilder();
+        // If the column is an array, we will assume it is an array of key-value pairs
+        // and can add them each as a where clause. We will maintain the boolean we
+        // received when the method was called and pass it into the nested where.
+        if ( is_array( $column ) ) {
+            return $this->addArrayOfWheres( $column, $boolean );
+        }
 
-        $qb->select( 'entity' )
-            ->from( $this->getEntityName(), 'entity' );
+        // If the columns is actually a Closure instance, we will assume the developer
+        // wants to begin a nested where statement which is wrapped in parenthesis.
+        // We'll add that Closure to the query then return back out immediately.
+        if ( $column instanceof Closure ) {
+            $subWhereSql = $this->parseClosureWhere( $this->newQuery(), $column );
+            if ( $subWhereSql ) {
+                $value = $boolean . ' ' . new Raw( $subWhereSql );
+                $type = 'raw';
+                $this->options[ 'where' ][] = compact(
+                    'type', 'value', 'boolean'
+                );
+            }
+            return $this;
+        }
 
-        foreach ( $criteria as $field => $value ) {
-            // IF INTEGER neq, IF NOT notLike
-            if($this->getEntityManager()->getClassMetadata($this->getEntityName())->getFieldMapping($field)["type"]=="integer") {
-                $qb->andWhere( $expr->neq( 'entity.' . $field, $value ) );
+        //如果where的查询值是数组，就转成逗号分割的字符串，如果是默认=于操作的，改成in
+        if ( is_array( $value ) ) {
+            //$value = new TmacDbExpr( '(' . implode( ',', $value ) . ')' );
+            $operator = $operator === '=' ? 'IN' : $operator;
+        }
+
+        $type = 'basic';
+        $this->options[ 'where' ][] = compact(
+            'type', 'column', 'operator', 'value', 'boolean'
+        );
+
+        return $this;
+    }
+
+    /**
+     * Prepare the value and operator for a where clause.
+     *
+     * @param string $value
+     * @param string $operator
+     * @param bool $useDefault
+     * @return array
+     *
+     * @throws \InvalidArgumentException
+     */
+    protected function prepareValueAndOperator( $value, $operator, $useDefault = false )
+    {
+        if ( $useDefault ) {
+            return [ $operator, '=' ];
+        } elseif ( $this->invalidOperatorAndValue( $operator, $value ) ) {
+            throw new InvalidArgumentException( 'Illegal operator and value combination.' );
+        }
+
+        return [ $value, strtoupper( $operator ) ];
+    }
+
+    /**
+     * Determine if the given operator and value combination is legal.
+     *
+     * Prevents using Null values with invalid operators.
+     *
+     * @param string $operator
+     * @param mixed $value
+     * @return bool
+     */
+    protected function invalidOperatorAndValue( $operator, $value )
+    {
+        return is_null( $value ) && in_array( $operator, $this->operators ) &&
+            !in_array( $operator, [ '=', '<>', '!=' ] );
+    }
+
+    /**
+     * Add an array of where clauses to the query.
+     *
+     * @param array $column
+     * @param string $boolean
+     * @param string $method
+     * @return $this
+     */
+    protected function addArrayOfWheres( $column, $boolean, $method = 'andWhere' )
+    {
+        foreach ( $column as $key => $value ) {
+            if ( is_numeric( $key ) && is_array( $value ) ) {
+                $this->{$method}( ...array_values( $value ) );
             } else {
-                $qb->andWhere( $expr->notLike( 'entity.' . $field, $qb->expr()->literal($value) ) );
+                $this->$method( $key, '=', $value, $boolean );
             }
         }
-
-        if ( $orderBy ) {
-
-            foreach ( $orderBy as $field => $order ) {
-
-                $qb->addOrderBy( 'entity.' . $field, $order );
-            }
-        }
-
-        if ( $limit )
-            $qb->setMaxResults( $limit );
-
-        if ( $offset )
-            $qb->setFirstResult( $offset );
-
-        return $qb->getQuery()
-            ->getResult();
-    }
-    
-    public function findByNot1($field, $value)
-    {
-        $qb = $this->createQueryBuilder('a');
-        $qb->where($qb->expr()->not($qb->expr()->eq('a.'.$field, '?1')));
-        $qb->setParameter(1, $value);
-
-
-        if ( $limit )
-            $qb->setMaxResults( $limit );
-
-        if ( $offset )
-            $qb->setFirstResult( $offset );
-
-        return $qb->getQuery()
-            ->getResult();
-    }
-    public function findBySql(){}
-    /**
-     * 指定AND查询条件
-     * @access public
-     * @param mixed $field     查询字段
-     * @param mixed $op        查询表达式
-     * @param mixed $condition 查询条件
-     * @return $this
-     */
-    public function where($field, $op = null, $condition = null)
-    {
-        if ($field instanceof $this) {
-            $this->parseQueryWhere($field);
-            return $this;
-        } elseif (true === $field || 1 === $field) {
-            $this->options['where']['AND'][] = true;
-            return $this;
-        }
-
-        $param = func_get_args();
-        array_shift($param);
-        return $this->parseWhereExp('AND', $field, $op, $condition, $param);
-    }
-
-    /**
-     * 解析Query对象查询条件
-     * @access public
-     * @param BaseQuery $query 查询对象
-     * @return void
-     */
-    protected function parseQueryWhere(BaseQuery $query): void
-    {
-        $this->options['where'] = $query->getOptions('where');
-
-        if ($query->getOptions('via')) {
-            $via = $query->getOptions('via');
-            foreach ($this->options['where'] as $logic => &$where) {
-                foreach ($where as $key => &$val) {
-                    if (is_array($val) && !strpos($val[0], '.')) {
-                        $val[0] = $via . '.' . $val[0];
-                    }
-                }
-            }
-        }
-
-        $this->bind($query->getBind(false));
-    }
-
-    /**
-     * 指定OR查询条件
-     * @access public
-     * @param mixed $field     查询字段
-     * @param mixed $op        查询表达式
-     * @param mixed $condition 查询条件
-     * @return $this
-     */
-    public function whereOr($field, $op = null, $condition = null)
-    {
-        $param = func_get_args();
-        array_shift($param);
-        return $this->parseWhereExp('OR', $field, $op, $condition, $param);
-    }
-
-    /**
-     * 指定XOR查询条件
-     * @access public
-     * @param mixed $field     查询字段
-     * @param mixed $op        查询表达式
-     * @param mixed $condition 查询条件
-     * @return $this
-     */
-    public function whereXor($field, $op = null, $condition = null)
-    {
-        $param = func_get_args();
-        array_shift($param);
-        return $this->parseWhereExp('XOR', $field, $op, $condition, $param);
-    }
-
-    /**
-     * 指定Null查询条件
-     * @access public
-     * @param mixed  $field 查询字段
-     * @param string $logic 查询逻辑 and or xor
-     * @return $this
-     */
-    public function whereNull(string $field, string $logic = 'AND')
-    {
-        return $this->parseWhereExp($logic, $field, 'NULL', null, [], true);
-    }
-
-    /**
-     * 指定NotNull查询条件
-     * @access public
-     * @param mixed  $field 查询字段
-     * @param string $logic 查询逻辑 and or xor
-     * @return $this
-     */
-    public function whereNotNull(string $field, string $logic = 'AND')
-    {
-        return $this->parseWhereExp($logic, $field, 'NOTNULL', null, [], true);
-    }
-
-    /**
-     * 指定Exists查询条件
-     * @access public
-     * @param mixed  $condition 查询条件
-     * @param string $logic     查询逻辑 and or xor
-     * @return $this
-     */
-    public function whereExists($condition, string $logic = 'AND')
-    {
-        if (is_string($condition)) {
-            $condition = new Raw($condition);
-        }
-
-        $this->options['where'][strtoupper($logic)][] = ['', 'EXISTS', $condition];
         return $this;
     }
 
     /**
-     * 指定NotExists查询条件
-     * @access public
-     * @param mixed  $condition 查询条件
-     * @param string $logic     查询逻辑 and or xor
+     * 设置where条件
+     * @param $column
+     * @param null $operator
+     * @param null $value
+     * @return $this|QueryBuilderDatabase
+     */
+    public function where( $column, $operator = null, $value = null )
+    {
+        [ $value, $operator ] = $this->prepareValueAndOperator(
+            $value, $operator, func_num_args() === 2
+        );
+        $this->options[ 'where' ] = [];//初始化where数组
+        return $this->parseWhereExp( $column, $operator, $value );
+    }
+
+
+    /**
+     * andWhere
+     * @param $column
+     * @param null $operator
+     * @param null $value
+     * @return $this|QueryBuilderDatabase
+     */
+    public function andWhere( $column, $operator = null, $value = null )
+    {
+        [ $value, $operator ] = $this->prepareValueAndOperator(
+            $value, $operator, func_num_args() === 2
+        );
+        return $this->parseWhereExp( $column, $operator, $value );
+    }
+
+    /**
+     * Add an "or where" clause to the query.
+     *
+     * @param \Closure|string|array $column
+     * @param mixed $operator
+     * @param mixed $value
      * @return $this
      */
-    public function whereNotExists($condition, string $logic = 'AND')
+    public function orWhere( $column, $operator = null, $value = null )
     {
-        if (is_string($condition)) {
-            $condition = new Raw($condition);
+        [ $value, $operator ] = $this->prepareValueAndOperator(
+            $value, $operator, func_num_args() === 2
+        );
+        return $this->parseWhereExp( $column, $operator, $value, 'or' );
+    }
+
+    /**
+     * Add a raw where clause to the query.
+     *
+     * @param string $sql
+     * @param mixed $bindings
+     * @param string $boolean
+     * @return $this
+     */
+    public function whereRaw( string $sql, array $bind = [], string $boolean = 'and' )
+    {
+        if ( !empty( $bind ) ) {
+            $this->bindParams( $sql, $bind );
         }
 
-        $this->options['where'][strtoupper($logic)][] = ['', 'NOT EXISTS', $condition];
-        return $this;
-    }
-
-    /**
-     * 指定In查询条件
-     * @access public
-     * @param mixed  $field     查询字段
-     * @param mixed  $condition 查询条件
-     * @param string $logic     查询逻辑 and or xor
-     * @return $this
-     */
-    public function whereIn(string $field, $condition, string $logic = 'AND')
-    {
-        return $this->parseWhereExp($logic, $field, 'IN', $condition, [], true);
-    }
-
-    /**
-     * 指定NotIn查询条件
-     * @access public
-     * @param mixed  $field     查询字段
-     * @param mixed  $condition 查询条件
-     * @param string $logic     查询逻辑 and or xor
-     * @return $this
-     */
-    public function whereNotIn(string $field, $condition, string $logic = 'AND')
-    {
-        return $this->parseWhereExp($logic, $field, 'NOT IN', $condition, [], true);
-    }
-
-    /**
-     * 指定Like查询条件
-     * @access public
-     * @param mixed  $field     查询字段
-     * @param mixed  $condition 查询条件
-     * @param string $logic     查询逻辑 and or xor
-     * @return $this
-     */
-    public function whereLike(string $field, $condition, string $logic = 'AND')
-    {
-        return $this->parseWhereExp($logic, $field, 'LIKE', $condition, [], true);
-    }
-
-    /**
-     * 指定NotLike查询条件
-     * @access public
-     * @param mixed  $field     查询字段
-     * @param mixed  $condition 查询条件
-     * @param string $logic     查询逻辑 and or xor
-     * @return $this
-     */
-    public function whereNotLike(string $field, $condition, string $logic = 'AND')
-    {
-        return $this->parseWhereExp($logic, $field, 'NOT LIKE', $condition, [], true);
-    }
-
-    /**
-     * 指定Between查询条件
-     * @access public
-     * @param mixed  $field     查询字段
-     * @param mixed  $condition 查询条件
-     * @param string $logic     查询逻辑 and or xor
-     * @return $this
-     */
-    public function whereBetween(string $field, $condition, string $logic = 'AND')
-    {
-        return $this->parseWhereExp($logic, $field, 'BETWEEN', $condition, [], true);
-    }
-
-    /**
-     * 指定NotBetween查询条件
-     * @access public
-     * @param mixed  $field     查询字段
-     * @param mixed  $condition 查询条件
-     * @param string $logic     查询逻辑 and or xor
-     * @return $this
-     */
-    public function whereNotBetween(string $field, $condition, string $logic = 'AND')
-    {
-        return $this->parseWhereExp($logic, $field, 'NOT BETWEEN', $condition, [], true);
-    }
-
-    /**
-     * 指定FIND_IN_SET查询条件
-     * @access public
-     * @param mixed  $field     查询字段
-     * @param mixed  $condition 查询条件
-     * @param string $logic     查询逻辑 and or xor
-     * @return $this
-     */
-    public function whereFindInSet(string $field, $condition, string $logic = 'AND')
-    {
-        return $this->parseWhereExp($logic, $field, 'FIND IN SET', $condition, [], true);
-    }
-
-    /**
-     * 比较两个字段
-     * @access public
-     * @param string $field1   查询字段
-     * @param string $operator 比较操作符
-     * @param string $field2   比较字段
-     * @param string $logic    查询逻辑 and or xor
-     * @return $this
-     */
-    public function whereColumn(string $field1, string $operator, string $field2 = null, string $logic = 'AND')
-    {
-        if (is_null($field2)) {
-            $field2   = $operator;
-            $operator = '=';
-        }
-
-        return $this->parseWhereExp($logic, $field1, 'COLUMN', [$operator, $field2], [], true);
-    }
-
-    /**
-     * 设置软删除字段及条件
-     * @access public
-     * @param string $field     查询字段
-     * @param mixed  $condition 查询条件
-     * @return $this
-     */
-    public function useSoftDelete(string $field, $condition = null)
-    {
-        if ($field) {
-            $this->options['soft_delete'] = [$field, $condition];
-        }
-
-        return $this;
-    }
-
-    /**
-     * 指定Exp查询条件
-     * @access public
-     * @param mixed  $field 查询字段
-     * @param string $where 查询条件
-     * @param array  $bind  参数绑定
-     * @param string $logic 查询逻辑 and or xor
-     * @return $this
-     */
-    public function whereExp(string $field, string $where, array $bind = [], string $logic = 'AND')
-    {
-        if (!empty($bind)) {
-            $this->bindParams($where, $bind);
-        }
-
-        $this->options['where'][$logic][] = [$field, 'EXP', new Raw($where)];
-
-        return $this;
-    }
-
-    /**
-     * 指定字段Raw查询
-     * @access public
-     * @param string $field     查询字段表达式
-     * @param mixed  $op        查询表达式
-     * @param string $condition 查询条件
-     * @param string $logic     查询逻辑 and or xor
-     * @return $this
-     */
-    public function whereFieldRaw(string $field, $op, $condition = null, string $logic = 'AND')
-    {
-        if (is_null($condition)) {
-            $condition = $op;
-            $op        = '=';
-        }
-
-        $this->options['where'][$logic][] = [new Raw($field), $op, $condition];
-        return $this;
-    }
-
-    /**
-     * 指定表达式查询条件
-     * @access public
-     * @param string $where 查询条件
-     * @param array  $bind  参数绑定
-     * @param string $logic 查询逻辑 and or xor
-     * @return $this
-     */
-    public function whereRaw(string $where, array $bind = [], string $logic = 'AND')
-    {
-        if (!empty($bind)) {
-            $this->bindParams($where, $bind);
-        }
-
-        $this->options['where'][$logic][] = new Raw($where);
+        $type = 'sql';
+        $value = new Raw( $sql );
+        $this->options[ 'where' ][] = compact(
+            'type', 'value', 'boolean'
+        );
 
         return $this;
     }
@@ -384,199 +187,372 @@ trait Where
      * 指定表达式查询条件 OR
      * @access public
      * @param string $where 查询条件
-     * @param array  $bind  参数绑定
+     * @param array $bind 参数绑定
      * @return $this
      */
-    public function whereOrRaw(string $where, array $bind = [])
+    public function orWhereRaw( string $sql, array $bind = [] )
     {
-        return $this->whereRaw($where, $bind, 'OR');
+        return $this->whereRaw( $sql, $bind, 'OR' );
     }
 
     /**
-     * 分析查询表达式
-     * @access protected
-     * @param string $logic     查询逻辑 and or xor
-     * @param mixed  $field     查询字段
-     * @param mixed  $op        查询表达式
-     * @param mixed  $condition 查询条件
-     * @param array  $param     查询参数
-     * @param bool   $strict    严格模式
-     * @return $this
+     * where IN 方法
+     * @param $column
+     * @param null $operator
+     * @param null $value
+     * @return mixed
      */
-    protected function parseWhereExp(string $logic, $field, $op, $condition, array $param = [], bool $strict = false)
+    public function whereIn( $column, $operator = null, $value = null )
     {
-        $logic = strtoupper($logic);
-
-        if (is_string($field) && !empty($this->options['via']) && false === strpos($field, '.')) {
-            $field = $this->options['via'] . '.' . $field;
-        }
-
-        if ($field instanceof Raw) {
-            return $this->whereRaw($field, is_array($op) ? $op : [], $logic);
-        } elseif ($strict) {
-            // 使用严格模式查询
-            if ('=' == $op) {
-                $where = $this->whereEq($field, $condition);
-            } else {
-                $where = [$field, $op, $condition, $logic];
-            }
-        } elseif (is_array($field)) {
-            // 解析数组批量查询
-            return $this->parseArrayWhereItems($field, $logic);
-        } elseif ($field instanceof Closure) {
-            $where = $field;
-        } elseif (is_string($field)) {
-            if (preg_match('/[,=\<\'\"\(\s]/', $field)) {
-                return $this->whereRaw($field, is_array($op) ? $op : [], $logic);
-            } elseif (is_string($op) && strtolower($op) == 'exp') {
-                $bind = isset($param[2]) && is_array($param[2]) ? $param[2] : [];
-                return $this->whereExp($field, $condition, $bind, $logic);
-            }
-
-            $where = $this->parseWhereItem($logic, $field, $op, $condition, $param);
-        }
-
-        if (!empty($where)) {
-            $this->options['where'][$logic][] = $where;
-        }
-
-        return $this;
+        return $this->where( $column, 'IN', $value );
     }
 
     /**
-     * 分析查询表达式
-     * @access protected
-     * @param string $logic     查询逻辑 and or xor
-     * @param mixed  $field     查询字段
-     * @param mixed  $op        查询表达式
-     * @param mixed  $condition 查询条件
-     * @param array  $param     查询参数
-     * @return array
+     * or where IN 方法
+     * @param $column
+     * @param null $operator
+     * @param null $value
+     * @return mixed
      */
-    protected function parseWhereItem(string $logic, $field, $op, $condition, array $param = []): array
+    public function orwhereIn( $column, $value = null )
     {
-        if (is_array($op)) {
-            // 同一字段多条件查询
-            array_unshift($param, $field);
-            $where = $param;
-        } elseif ($field && is_null($condition)) {
-            if (is_string($op) && in_array(strtoupper($op), ['NULL', 'NOTNULL', 'NOT NULL'], true)) {
-                // null查询
-                $where = [$field, $op, ''];
-            } elseif ('=' === $op || is_null($op)) {
-                $where = [$field, 'NULL', ''];
-            } elseif ('<>' === $op) {
-                $where = [$field, 'NOTNULL', ''];
-            } else {
-                // 字段相等查询
-                $where = $this->whereEq($field, $op);
-            }
-        } elseif (is_string($op) && in_array(strtoupper($op), ['EXISTS', 'NOT EXISTS', 'NOTEXISTS'], true)) {
-            $where = [$field, $op, is_string($condition) ? new Raw($condition) : $condition];
-        } else {
-            $where = $field ? [$field, $op, $condition, $param[2] ?? null] : [];
-        }
-
-        return $where;
+        return $this->orWhere( $column, 'IN', $value );
     }
 
     /**
-     * 相等查询的主键处理
-     * @access protected
-     * @param string $field 字段名
-     * @param mixed  $value 字段值
-     * @return array
+     * and where IN 方法
+     * @param $column
+     * @param null $operator
+     * @param null $value
+     * @return mixed
      */
-    protected function whereEq(string $field, $value): array
+    public function andwhereIn( $column, $value = null )
     {
-        if ($this->getPk() == $field) {
-            $this->options['key'] = $value;
-        }
+        return $this->andWhere( $column, 'IN', $value );
+    }
 
-        return [$field, '=', $value];
+
+    /**
+     * where NOT IN 方法
+     * @param $column
+     * @param null $operator
+     * @param null $value
+     * @return mixed
+     */
+    public function whereNotIn( $column, $value = null )
+    {
+        return $this->where( $column, 'NOT IN', $value );
     }
 
     /**
-     * 数组批量查询
-     * @access protected
-     * @param array  $field 批量查询
+     * or where NOT IN 方法
+     * @param $column
+     * @param null $operator
+     * @param null $value
+     * @return mixed
+     */
+    public function orWhereNotIn( $column, $value = null )
+    {
+        return $this->orWhere( $column, 'NOT IN', $value );
+    }
+
+
+    /**
+     * and where NOT IN 方法
+     * @param $column
+     * @param null $operator
+     * @param null $value
+     * @return mixed
+     */
+    public function andWhereNotIn( $column, $value = null )
+    {
+        return $this->andWhere( $column, 'NOT IN', $value );
+    }
+
+    /**
+     * where LIKE 方法
+     * @param $column
+     * @param null $operator
+     * @param null $value
+     * @return mixed
+     */
+    public function whereLike( $column, $value = null )
+    {
+        return $this->where( $column, 'LIKE', $value );
+    }
+
+    /**
+     * or where LIKE 方法
+     * @param $column
+     * @param null $operator
+     * @param null $value
+     * @return mixed
+     */
+    public function orWhereLike( $column, $value = null )
+    {
+        return $this->orWhere( $column, 'LIKE', $value );
+    }
+
+    /**
+     * and where LIKE 方法
+     * @param $column
+     * @param null $operator
+     * @param null $value
+     * @return mixed
+     */
+    public function andWhereLike( $column, $value = null )
+    {
+        return $this->andWhere( $column, 'LIKE', $value );
+    }
+
+    /**
+     * where Between 方法
+     * @param $column
+     * @param null $operator
+     * @param null $value
+     * @return mixed
+     */
+    public function whereBetween( $column, $value = null )
+    {
+        return $this->where( $column, 'BETWEEN', $value );
+    }
+
+    /**
+     * or where Between 方法
+     * @param $column
+     * @param null $operator
+     * @param null $value
+     * @return mixed
+     */
+    public function orWhereBetween( $column, $value = null )
+    {
+        return $this->orWhere( $column, 'BETWEEN', $value );
+    }
+
+    /**
+     * or where Between 方法
+     * @param $column
+     * @param null $operator
+     * @param null $value
+     * @return mixed
+     */
+    public function andWhereBetween( $column, $value = null )
+    {
+        return $this->andWhere( $column, 'BETWEEN', $value );
+    }
+
+    /**
+     * 指定NotBetween查询条件
+     * @access public
+     * @param mixed $field 查询字段
+     * @param mixed $condition 查询条件
      * @param string $logic 查询逻辑 and or xor
      * @return $this
      */
-    protected function parseArrayWhereItems(array $field, string $logic)
+    public function whereNotBetween( $column, $value = null )
     {
-        if (key($field) !== 0) {
-            $where = [];
-            foreach ($field as $key => $val) {
-                if ($val instanceof Raw) {
-                    $where[] = [$key, 'exp', $val];
-                } else {
-                    $where[] = is_null($val) ? [$key, 'NULL', ''] : [$key, is_array($val) ? 'IN' : '=', $val];
-                }
-            }
-        } else {
-            // 数组批量查询
-            $where = $field;
-        }
-
-        if (!empty($where)) {
-            $this->options['where'][$logic] = isset($this->options['where'][$logic]) ?
-                array_merge($this->options['where'][$logic], $where) : $where;
-        }
-
-        return $this;
+        return $this->where( $column, 'NOT BETWEEN', $value );
     }
 
+
     /**
-     * 去除某个查询条件
+     * or 指定NotBetween查询条件
      * @access public
-     * @param string $field 查询字段
+     * @param mixed $field 查询字段
+     * @param mixed $condition 查询条件
      * @param string $logic 查询逻辑 and or xor
      * @return $this
      */
-    public function removeWhereField(string $field, string $logic = 'AND')
+    public function orWhereNotBetween( $column, $value = null )
     {
-        $logic = strtoupper($logic);
+        return $this->orWhere( $column, 'NOT BETWEEN', $value );
+    }
 
-        if (isset($this->options['where'][$logic])) {
-            foreach ($this->options['where'][$logic] as $key => $val) {
-                if (is_array($val) && $val[0] == $field) {
-                    unset($this->options['where'][$logic][$key]);
-                }
-            }
-        }
 
-        return $this;
+    /**
+     * and 指定NotBetween查询条件
+     * @access public
+     * @param mixed $field 查询字段
+     * @param mixed $condition 查询条件
+     * @param string $logic 查询逻辑 and or xor
+     * @return $this
+     */
+    public function andWhereNotBetween( string $field, $condition, string $logic = 'AND' )
+    {
+        return $this->andWhere( $column, 'NOT BETWEEN', $value );
+    }
+
+
+    /**
+     * 指定Null查询条件
+     * @access public
+     * @param mixed $field 查询字段
+     * @param string $logic 查询逻辑 and or xor
+     * @return $this
+     */
+    public function whereNull( $column )
+    {
+        return $this->where( $column, '=', new Raw( 'NULL' ) );
     }
 
     /**
-     * 条件查询
+     * or指定Null查询条件
      * @access public
-     * @param mixed         $condition 满足条件（支持闭包）
-     * @param Closure|array $query     满足条件后执行的查询表达式（闭包或数组）
-     * @param Closure|array $otherwise 不满足条件后执行
+     * @param mixed $field 查询字段
+     * @param string $logic 查询逻辑 and or xor
      * @return $this
      */
-    public function when($condition, $query, $otherwise = null)
+    public function orWhereNull( $column )
     {
-        if ($condition instanceof Closure) {
-            $condition = $condition($this);
-        }
+        return $this->orWhere( $column, '=', new Raw( 'NULL' ) );
+    }
 
-        if ($condition) {
-            if ($query instanceof Closure) {
-                $query($this, $condition);
-            } elseif (is_array($query)) {
-                $this->where($query);
-            }
-        } elseif ($otherwise) {
-            if ($otherwise instanceof Closure) {
-                $otherwise($this, $condition);
-            } elseif (is_array($otherwise)) {
-                $this->where($otherwise);
-            }
-        }
+    /**
+     * and 指定Null查询条件
+     * @access public
+     * @param mixed $field 查询字段
+     * @param string $logic 查询逻辑 and or xor
+     * @return $this
+     */
+    public function andWhereNull( $column )
+    {
+        return $this->andWhere( $column, 'is', new Raw( 'NULL' ) );
+    }
 
-        return $this;
+    /**
+     * 指定NotNull查询条件
+     * @access public
+     * @param mixed $field 查询字段
+     * @param string $logic 查询逻辑 and or xor
+     * @return $this
+     */
+    public function whereNotNull( $column )
+    {
+        return $this->where( $column, 'is', new Raw( 'NOT NULL' ) );
+    }
+
+    /**
+     * or指定Null查询条件
+     * @access public
+     * @param mixed $field 查询字段
+     * @param string $logic 查询逻辑 and or xor
+     * @return $this
+     */
+    public function orwhereNotNull( $column )
+    {
+        return $this->orWhere( $column, 'is', new Raw( 'NOT NULL' ) );
+    }
+
+    /**
+     * and 指定Null查询条件
+     * @access public
+     * @param mixed $field 查询字段
+     * @param string $logic 查询逻辑 and or xor
+     * @return $this
+     */
+    public function andwhereNotNull( $column )
+    {
+        return $this->andWhere( $column, 'is', new Raw( 'NOT NULL' ) );
+    }
+
+    /**
+     * 指定Exists查询条件
+     * @access public
+     * @return $this
+     */
+    public function whereExists( $value )
+    {
+        return $this->where( '', 'EXISTS', $value );
+    }
+
+
+    /**
+     * 指定Exists查询条件
+     * @access public
+     * @return $this
+     */
+    public function orWhereExists( $value )
+    {
+        return $this->orWhere( '', 'EXISTS', $value );
+    }
+
+    /**
+     * 指定Exists查询条件
+     * @access public
+     * @return $this
+     */
+    public function andWhereExists( $value )
+    {
+        return $this->andWhere( '', 'EXISTS', $value );
+    }
+
+    /**
+     * 指定Exists查询条件
+     * @access public
+     * @return $this
+     */
+    public function whereNotExists( $value )
+    {
+        return $this->where( '', 'NOT EXISTS', $value );
+    }
+
+
+    /**
+     * 指定Exists查询条件
+     * @access public
+     * @return $this
+     */
+    public function orWhereNotExists( $value )
+    {
+        return $this->orWhere( '', 'NOT EXISTS', $value );
+    }
+
+    /**
+     * 指定Exists查询条件
+     * @access public
+     * @return $this
+     */
+    public function andWhereNotExists( $value )
+    {
+        return $this->andWhere( '', 'NOT EXISTS', $value );
+    }
+
+    /**
+     * 指定FIND_IN_SET查询条件
+     * @access public
+     * @param mixed $field 查询字段
+     * @param mixed $condition 查询条件
+     * @param string $logic 查询逻辑 and or xor
+     * @return $this
+     */
+    public function whereFindInSet( $column, $value = null )
+    {
+        return $this->where( $column, 'FIND_IN_SET', $value );
+    }
+
+    /**
+     * 指定FIND_IN_SET查询条件
+     * @access public
+     * @param mixed $field 查询字段
+     * @param mixed $condition 查询条件
+     * @param string $logic 查询逻辑 and or xor
+     * @return $this
+     */
+    public function orWhereFindInSet( $column, $value = null )
+    {
+        return $this->orWhere( $column, 'FIND_IN_SET', $value );
+    }
+
+    /**
+     * 指定FIND_IN_SET查询条件
+     * @access public
+     * @param mixed $field 查询字段
+     * @param mixed $condition 查询条件
+     * @param string $logic 查询逻辑 and or xor
+     * @return $this
+     */
+    public function andWhereFindInSet( $column, $value = null )
+    {
+        return $this->andWhere( $column, 'FIND_IN_SET', $value );
     }
 }

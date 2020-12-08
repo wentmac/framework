@@ -17,9 +17,11 @@ use Tmac\Database\Concern\Orm;
 use Tmac\Database\Concern\Query;
 use Tmac\Database\Concern\ParamsBind;
 use Closure;
+use Tmac\Database\Concern\Where;
 
 class QueryBuilderDatabase
 {
+    use Where;
     use Orm;
     use Builder;
     use AggregateQuery;
@@ -37,15 +39,6 @@ class QueryBuilderDatabase
     protected $table;
     protected $className;//实体类的className
     protected $schema;//实体类的数据表的schema
-
-    protected $field = '*';
-    protected $countField = '*';
-    protected $where;
-    protected $orderBy;
-    protected $groupBy;
-    protected $limit;
-    protected $top;
-    protected $joinString;
 
     /**
      * @var string the separator between different fragments of a SQL statement.
@@ -72,12 +65,18 @@ class QueryBuilderDatabase
      */
     public $operators = [
         '=', '<', '>', '<=', '>=', '<>', '!=', '<=>',
-        'like', 'like binary', 'not like', 'ilike',
+        'LIKE', 'LIKE BINARY', 'NOT LIKE', 'ILIKE', 'IN', 'NOT IN', 'BETWEEN', 'NOT BETWEEN',
         '&', '|', '^', '<<', '>>',
-        'rlike', 'not rlike', 'regexp', 'not regexp',
-        '~', '~*', '!~', '!~*', 'similar to',
-        'not similar to', 'not ilike', '~~*', '!~~*',
+        'RLIKE', 'NOT RLIKE', 'REGEXP', 'NOT REGEXP',
+        '~', '~*', '!~', '!~*', 'SIMILAR TO',
+        'NOT SIMILAR TO', 'NOT ILIKE', '~~*', '!~~*',
     ];
+
+    /**
+     * 子查询状态
+     * @var bool
+     */
+    protected $subQuery = false;
 
     /**
      * 初始化
@@ -99,8 +98,33 @@ class QueryBuilderDatabase
      */
     public function newQuery(): QueryBuilderDatabase
     {
+        $this->subQuery = true;
         return new static( $this->driverDatabase, $this->table, $this->className, $this->schema, $this->primaryKey );
     }
+
+    /**
+     * @return DriverDatabase
+     */
+    public function getDriverDatabase(): DriverDatabase
+    {
+        return $this->driverDatabase;
+    }
+
+    /**
+     * 子查询其他表的Repo类，用来取得其他表的表名，实体实，schema
+     * 生成时 闭包的 Repo对象
+     * @param $repository
+     */
+    public function setRepository( $repository ): self
+    {
+        $this->driverDatabase = $repository->getDriverDatabase();
+        $this->table = $repository->getTable();
+        $this->className = $repository->getClassName();
+        $this->schema = $repository->getSchema();
+        $this->primaryKey = $repository->getPrimaryKey();
+        return $this;
+    }
+
 
     /**
      * @return mixed
@@ -131,68 +155,6 @@ class QueryBuilderDatabase
         return $this->table;
     }
 
-    public function getField()
-    {
-        return $this->field;
-    }
-
-    public function getOrderBy()
-    {
-        return $this->orderBy;
-    }
-
-    function getGroupby()
-    {
-        return $this->groupBy;
-    }
-
-    public function setField( $field )
-    {
-        $this->field = $field;
-        return $this;
-    }
-
-    /**
-     * @return string
-     */
-    public function getCountField(): string
-    {
-        return $this->countField;
-    }
-
-    function setCountField( $countField )
-    {
-        $this->countField = $countField;
-        return $this;
-    }
-
-    function setGroupby( $groupBy )
-    {
-        $this->groupBy = $groupBy;
-        return $this;
-    }
-
-    public function setOrderBy( $orderBy )
-    {
-        $this->orderBy = $orderBy;
-        return $this;
-    }
-
-    public function getWhere()
-    {
-        return $this->where;
-    }
-
-    public function setWhere( $where )
-    {
-        $this->where = $where;
-        return $this;
-    }
-
-    public function getLimit()
-    {
-        return $this->limit;
-    }
 
     public function setLimit( int $limit, int $offset = null )
     {
@@ -248,11 +210,12 @@ class QueryBuilderDatabase
 
         // 获取数据表
         if ( empty( $options[ 'table' ] ) ) {
+            $table = $this->getTable();
             if ( !empty( $this->options[ 'alias' ][ $table ] ) ) {
                 $alias = $this->options[ 'alias' ][ $table ];
-                $options[ 'table' ] = $this->getTable() . ' ' . $alias;
+                $options[ 'table' ] = $table . ' ' . $alias;
             } else {
-                $options[ 'table' ] = $this->getTable();
+                $options[ 'table' ] = $table;
             }
         }
 
@@ -306,23 +269,6 @@ class QueryBuilderDatabase
         return $this;
     }
 
-    /**
-     * @return mixed
-     */
-    public function getJoinString()
-    {
-        return $this->joinString;
-    }
-
-    /**
-     * @param mixed $joinString
-     */
-    public function setJoinString( $joinString )
-    {
-        $this->joinString = $joinString;
-        return $this;
-    }
-
 
     /**
      * join子句查询
@@ -332,17 +278,17 @@ class QueryBuilderDatabase
      * @param type $joinTable 表名
      * @param type $on join时候的on语句
      * @param type $joinType 联表的类型
-     * @return type
+     * @return $this|QueryBuilderDatabase
      */
-    public function join( $join, string $condition = null, string $type = 'INNER', array $bind = [] )
+    public function join( $repository, string $condition = null, string $type = 'INNER', array $bind = [] )
     {
-        $table = $this->getJoinTable( $join );
+        $table = $this->getJoinTable( $repository );
 
         if ( !empty( $bind ) && $condition ) {
             $this->bindParams( $condition, $bind );
         }
 
-        $this->options[ 'join' ][] = [ $table, strtoupper( $type ), $condition ];
+        $this->options[ 'join' ][] = [ $table[ 'table' ] . ' ' . $table[ 'alias' ], strtoupper( $type ), $condition ];
 
         return $this;
     }
@@ -394,76 +340,16 @@ class QueryBuilderDatabase
      * @param string $alias 别名
      * @return string|array
      */
-    protected function getJoinTable( $join )
+    protected function getJoinTable( $repository )
     {
-        if ( is_array( $join ) ) {
-            return $join[ 0 ] . ' ' . $join[ 1 ];
-        } elseif ( $join instanceof Raw ) {
-            return $join;
-        }
-
-        $join = trim( $join );
-
-        if ( false !== strpos( $join, '(' ) ) {
-            // 使用子查询
-            return $join;
-        }
-        // 使用别名
-        if ( strpos( $join, ' ' ) ) {
-            // 使用别名
-            [ $table, $alias ] = explode( ' ', $join );
-        } else {
-            $table = $join;
-            if ( false === strpos( $join, '.' ) ) {
-                $alias = $join;
-            }
-        }
-
-
-        return $table;
+        $table = $repository->getTable();
+        $alias = $repository->getOptions( 'alias' );
+        return [
+            'table' => $table,
+            'alias' => $alias[ $table ]
+        ];
     }
 
-
-    /**
-     * where解析
-     */
-    private function parseWhereExp( $column, $operator = null, $value = null, $boolean = 'and' )
-    {
-        // If the column is an array, we will assume it is an array of key-value pairs
-        // and can add them each as a where clause. We will maintain the boolean we
-        // received when the method was called and pass it into the nested where.
-        if ( is_array( $column ) ) {
-            return $this->addArrayOfWheres( $column, $boolean );
-        }
-
-        // If the columns is actually a Closure instance, we will assume the developer
-        // wants to begin a nested where statement which is wrapped in parenthesis.
-        // We'll add that Closure to the query then return back out immediately.
-        if ( $column instanceof Closure ) {
-            $subWhereSql = $this->parseClosureWhere( $this->newQuery(), $column, $boolean );
-            if ( $subWhereSql ) {
-                $value = new TmacDbExpr( $subWhereSql );
-                $type = 'raw';
-                $this->options[ 'where' ][] = compact(
-                    'type', 'value', 'boolean'
-                );
-            }
-            return $this;
-        }
-
-        //如果where的查询值是数组，就转成逗号分割的字符串，如果是默认=于操作的，改成in
-        if ( is_array( $value ) ) {
-            $value = new TmacDbExpr( '(' . implode( ',', $value ) . ')' );
-            $operator = $operator === '=' ? 'IN' : $operator;
-        }
-
-        $type = 'basic';
-        $this->options[ 'where' ][] = compact(
-            'type', 'column', 'operator', 'value', 'boolean'
-        );
-
-        return $this;
-    }
 
     public function from( $table )
     {
@@ -473,75 +359,6 @@ class QueryBuilderDatabase
         $this->options[ 'table' ] = $table;
 
         return $this;
-    }
-
-    public function where( $column, $operator = null, $value = null )
-    {
-        [ $value, $operator ] = $this->prepareValueAndOperator(
-            $value, $operator, func_num_args() === 2
-        );
-        $this->options[ 'where' ] = [];//初始化where数组
-        return $this->parseWhereExp( $column, $operator, $value );
-    }
-
-
-    public function andWhere( $column, $operator = null, $value = null )
-    {
-        [ $value, $operator ] = $this->prepareValueAndOperator(
-            $value, $operator, func_num_args() === 2
-        );
-        return $this->parseWhereExp( $column, $operator, $value );
-    }
-
-    /**
-     * Add an "or where" clause to the query.
-     *
-     * @param \Closure|string|array $column
-     * @param mixed $operator
-     * @param mixed $value
-     * @return $this
-     */
-    public function orWhere( $column, $operator = null, $value = null )
-    {
-        [ $value, $operator ] = $this->prepareValueAndOperator(
-            $value, $operator, func_num_args() === 2
-        );
-        return $this->parseWhereExp( $column, $operator, $value, 'or' );
-    }
-
-    /**
-     * Add a raw where clause to the query.
-     *
-     * @param string $sql
-     * @param mixed $bindings
-     * @param string $boolean
-     * @return $this
-     */
-    public function whereRaw( string $sql, array $bind = [], string $boolean = 'and' )
-    {
-        if ( !empty( $bind ) ) {
-            $this->bindParams( $where, $bind );
-        }
-
-        $type = 'sql';
-        $value = new Raw( $sql );
-        $this->options[ 'where' ][] = compact(
-            'type', 'value', 'boolean'
-        );
-
-        return $this;
-    }
-
-    /**
-     * 指定表达式查询条件 OR
-     * @access public
-     * @param string $where 查询条件
-     * @param array $bind 参数绑定
-     * @return $this
-     */
-    public function orWhereRaw( string $sql, array $bind = [] )
-    {
-        return $this->whereRaw( $sql, $bind, 'OR' );
     }
 
     /**

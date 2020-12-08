@@ -9,6 +9,12 @@ use Tmac\Exception\DbException;
 trait Orm
 {
 
+
+    public function getLastSql()
+    {
+        return $this->getConn()->getLastSql();
+    }
+
     /**
      * 检测实体类合法性
      * @param $entity
@@ -211,7 +217,7 @@ trait Orm
      * @param mixed $id The identifier.
      * @return object|null The entity instance or NULL if the entity can not be found.
      */
-    public function find( $id )
+    public function find( $id, bool $master = false )
     {
         if ( empty( $id ) ) {
             throw new DbException( 'method find must need params:id' );
@@ -222,14 +228,20 @@ trait Orm
         if ( $this->getOptions( 'fetch_sql' ) === true ) { //返回构建的SQL语句
             return $this->getConn()->getRealSql( $sql, $binds );
         }
-        $res = $this->getConn()->fetchAssocObject( $sql, $binds, $this->getClassName() );
+        $res = $this->getConn()->fetchAssocObject( $sql, $binds, $this->getClassName(), $master );
         return $res;
     }
 
 
-    public function findColumn( array $criteria, array $orderBy = null )
+    public function findColumn( int $column = 0, bool $master = false )
     {
-
+        $sql = $this->getSelectSql();
+        $binds = $this->getBind();
+        if ( $this->getOptions( 'fetch_sql' ) === true ) { //返回构建的SQL语句
+            return $this->getConn()->getRealSql( $sql, $binds );
+        }
+        $res = $this->getConn()->fetchColumn( $sql, $binds, $column, $master );
+        return $res;
     }
 
     /**
@@ -237,34 +249,15 @@ trait Orm
      *
      * @return array The entities.
      */
-    public function findAll()
+    public function findAll( bool $master = false )
     {
-        return $this->findBy( [] );
-    }
-
-    /**
-     * Finds entities by a set of criteria.
-     *
-     * @param array $criteria
-     * @param array|null $orderBy
-     * @param int|null $limit
-     * @param int|null $offset
-     *
-     * @return array The objects.
-     */
-    public function findBy( array $criteria, array $orderBy = null, $limit = null, $offset = null )
-    {
-        if ( $orderBy !== null ) {
-            $this->setOrderBy( $orderBy );
+        $sql = $this->getSelectSql();
+        $binds = $this->getBind();
+        if ( $this->getOptions( 'fetch_sql' ) === true ) { //返回构建的SQL语句
+            return $this->getConn()->getRealSql( $sql, $binds );
         }
-        if ( $limit !== null ) {
-            $this->setLimit( $limit );
-        }
-        if ( $offset !== null ) {
-            $this->setOffset( $offset );
-        }
-
-        return $this->getListByWhere();
+        $res = $this->getConn()->fetchAllObject( $sql, $binds, $this->getClassName(), $master );
+        return $res;
     }
 
 
@@ -276,50 +269,34 @@ trait Orm
      *
      * @return object|null The entity instance or NULL if the entity can not be found.
      */
-    public function findOneBy( array $criteria, array $orderBy = null )
+    public function findOne( bool $master = false )
     {
-        $persister = $this->_em->getUnitOfWork()->getEntityPersister( $this->_entityName );
-
-        return $persister->load( $criteria, null, null, [], null, 1, $orderBy );
+        $sql = $this->getSelectSql();
+        $binds = $this->getBind();
+        if ( $this->getOptions( 'fetch_sql' ) === true ) { //返回构建的SQL语句
+            return $this->getConn()->getRealSql( $sql, $binds );
+        }
+        $res = $this->getConn()->fetchAssocObject( $sql, $binds, $this->getClassName(), $master );
+        return $res;
     }
 
-    public function findByNot( array $criteria, array $orderBy = null, $limit = null, $offset = null )
+
+    /**
+     * @param string $sql
+     * @param array $bind
+     * @param bool $master
+     * @return mixed
+     */
+    public function findBySql( string $sql, array $bind = [], bool $master = false )
     {
-        $qb = $this->getEntityManager()->createQueryBuilder();
-        $expr = $this->getEntityManager()->getExpressionBuilder();
-
-        $qb->select( 'entity' )
-            ->from( $this->getEntityName(), 'entity' );
-
-        foreach ( $criteria as $field => $value ) {
-            // IF INTEGER neq, IF NOT notLike
-            if ( $this->getEntityManager()->getClassMetadata( $this->getEntityName() )->getFieldMapping( $field )[ "type" ] == "integer" ) {
-                $qb->andWhere( $expr->neq( 'entity.' . $field, $value ) );
-            } else {
-                $qb->andWhere( $expr->notLike( 'entity.' . $field, $qb->expr()->literal( $value ) ) );
-            }
+        $this->whereRaw( $sql, $bind );
+        $sql = $this->getSelectSql();
+        $binds = $this->getBind();
+        if ( $this->getOptions( 'fetch_sql' ) === true ) { //返回构建的SQL语句
+            return $this->getConn()->getRealSql( $sql, $binds );
         }
-
-        if ( $orderBy ) {
-
-            foreach ( $orderBy as $field => $order ) {
-
-                $qb->addOrderBy( 'entity.' . $field, $order );
-            }
-        }
-
-        if ( $limit )
-            $qb->setMaxResults( $limit );
-
-        if ( $offset )
-            $qb->setFirstResult( $offset );
-
-        return $qb->getQuery()
-            ->getResult();
-    }
-
-    public function findBySql()
-    {
+        $res = $this->getConn()->fetchAllObject( $sql, $binds, $this->getClassName(), $master );
+        return $res;
     }
 
 }

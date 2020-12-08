@@ -137,82 +137,22 @@ trait Builder
     }
 
     /**
-     * Prepare the value and operator for a where clause.
-     *
-     * @param string $value
-     * @param string $operator
-     * @param bool $useDefault
-     * @return array
-     *
-     * @throws \InvalidArgumentException
-     */
-    protected function prepareValueAndOperator( $value, $operator, $useDefault = false )
-    {
-        if ( $useDefault ) {
-            return [ $operator, '=' ];
-        } elseif ( $this->invalidOperatorAndValue( $operator, $value ) ) {
-            throw new InvalidArgumentException( 'Illegal operator and value combination.' );
-        }
-
-        return [ $value, $operator ];
-    }
-
-    /**
-     * Determine if the given operator and value combination is legal.
-     *
-     * Prevents using Null values with invalid operators.
-     *
-     * @param string $operator
-     * @param mixed $value
-     * @return bool
-     */
-    protected function invalidOperatorAndValue( $operator, $value )
-    {
-        return is_null( $value ) && in_array( $operator, $this->operators ) &&
-            !in_array( $operator, [ '=', '<>', '!=' ] );
-    }
-
-    /**
-     * Add an array of where clauses to the query.
-     *
-     * @param array $column
-     * @param string $boolean
-     * @param string $method
-     * @return $this
-     */
-    protected function addArrayOfWheres( $column, $boolean, $method = 'andWhere' )
-    {
-        foreach ( $column as $key => $value ) {
-            if ( is_numeric( $key ) && is_array( $value ) ) {
-                $this->{$method}( ...array_values( $value ) );
-            } else {
-                $this->$method( $key, '=', $value, $boolean );
-            }
-        }
-        return $this;
-    }
-
-    /**
      * 闭包查询
      * @access protected
      * @param Query $query 查询对象
      * @param Closure $value 查询条件
-     * @param string $logic Logic
      * @return string
      */
-    protected function parseClosureWhere( QueryBuilderDatabase $query, Closure $value, string $logic )
+    protected function parseClosureWhere( QueryBuilderDatabase $query, Closure $value )
     {
         $value( $query );
 
         //print_r( $query->options );
-
-        $whereClosure = $this->parseWhere( $query->getOptions( 'where' ) ? : [] );
-
-        if ( !empty( $whereClosure ) ) {
-            $this->bind( $query->getBind( false ) );
-            $where = ' ' . $logic . '  ( ' . $whereClosure . ' )';
-        }
-
+        //$whereClosure = $this->parseWhere( $query->getOptions( 'where' ) ? : [] );
+        //$whereClosure = $query->parseWhere( $query->getOptions( 'where' ) ? : [] );
+        $whereClosure = $query->getSelectSql();
+        $this->bind( $query->getBind( false ) );
+        $where = '( ' . $whereClosure . ' )';
         return $where ?? '';
     }
 
@@ -350,6 +290,8 @@ trait Builder
         foreach ( $union as $u ) {
             if ( $u instanceof Closure ) {
                 $sql[] = $type . ' ' . $this->parseClosureWhere( $this->newQuery(), $u );
+            } elseif ( $u instanceof Raw ) {
+                $sql[] = $type . ' ' . $u->getValue();
             } elseif ( is_string( $u ) ) {
                 $sql[] = $type . ' ( ' . $u . ' )';
             }
@@ -476,26 +418,149 @@ trait Builder
             $where = " {$logic} " . $value[ 'value' ]->getValue();
         } elseif ( $type == 'raw' && $value[ 'value' ] instanceof Raw ) {
             $where = $value[ 'value' ]->getValue();
+        } elseif ( true === $value[ 'value' ] ) {
+            $where = ' ' . $logic . ' 1 ';
+        } elseif ( $value[ 'value' ] instanceof Closure ) {
+            // 使用闭包查询
+            $whereClosureStr = $this->parseClosureWhere( $this->newQuery(), $value[ 'value' ] );
+            if ( $whereClosureStr ) {
+                //取了别名后的
+                $column = $this->parseKey( $value[ 'column' ] );
+                $where = " {$logic} {$column} {$value['operator']} " . $whereClosureStr;
+            }
         } elseif ( is_array( $value ) ) {
             if ( key( $value ) === 0 ) {
                 throw new Exception( 'where express error:' . var_export( $value, true ) );
             }
-            //取了别名后的
-            $column = $this->parseKey($value['column']);
-            $where = " {$logic} {$column} {$value['operator']} ";
-            //进行数据bindValue
-            $where .= $this->parseBuilderDataBind( $value[ 'column' ], $value[ 'value' ] );
-        } elseif ( true === $value ) {
-            $where = ' ' . $logic . ' 1 ';
-        } elseif ( $value instanceof Closure ) {
-            // 使用闭包查询
-            $whereClosureStr = $this->parseClosureWhere( $this->newQuery(), $value, $logic );
-            if ( $whereClosureStr ) {
-                $where = $whereClosureStr;
+
+            //解析where in notIn
+            if ( in_array( $value[ 'operator' ], [ 'IN', 'NOT IN' ] ) ) {
+                return $this->parseWhereSubExpLogic( $value, $logic );
             }
+            //解析where exists notExists
+            if ( in_array( $value[ 'operator' ], [ 'EXISTS', 'NOT EXISTS' ] ) ) {
+                return $this->parseWhereExistsLogic( $value, $logic );
+            }
+            //解析where between
+            if ( in_array( $value[ 'operator' ], [ 'BETWEEN', 'NOT BETWEEN' ] ) ) {
+                return $this->parseWhereBetweenLogic( $value, $logic );
+            }
+
+            //解析where find_in_set
+            if ( $value[ 'operator' ] === 'FIND_IN_SET' ) {
+                return $this->parseWhereFindInSetLogic( $value, $logic );
+            }
+            //取了别名后的
+            $column = $this->parseKey( $value[ 'column' ] );
+            $where = " {$logic} {$column} {$value['operator']} ";
+
+
+            if ( $value[ 'value' ] instanceof Raw ) {
+                //比如NULL NOT NULL不需要进行pdo bindValue
+                $where .= $value[ 'value' ]->getValue();
+            } else {
+                //进行数据bindValue
+                $where .= $this->parseBuilderDataBind( $value[ 'column' ], $value[ 'value' ] );
+            }
+
         }
 
         return $where;
+    }
+
+    /**
+     * 解析where FindInSet 等的语句bind方法
+     * @param $value
+     */
+    private function parseWhereFindInSetLogic( $where, $logic ): string
+    {
+        //取了别名后的
+        $column = $this->parseKey( $where[ 'column' ] );
+        $operator = $where[ 'operator' ];
+        $value = $where[ 'value' ];
+        $where_str = " {$logic} {$operator} ";
+        if ( $value instanceof Raw ) {
+            $where_str .= '(' . $value->getValue() . ',' . $column . ')';
+        } else {
+            //进行数据bindValue
+            $where_str .= '(' . $this->parseBuilderDataBind( $where[ 'column' ], $value ) . ',' . $column . ')';
+        }
+        return $where_str;
+    }
+
+
+    /**
+     * @param $where
+     * @param $logic
+     * @return string
+     */
+    private function parseWhereBetweenLogic( $where, $logic ): string
+    {
+        $column = $this->parseKey( $where[ 'column' ] );
+        $operator = $where[ 'operator' ];
+        $value = $where[ 'value' ];
+        $where_str = " {$logic} {$column} {$operator} ";
+        if ( is_array( $value ) && isset( $value[ 0 ] ) && isset( $value[ 1 ] ) ) {
+            $start_value = $value[ 0 ];
+            $end_value = $value[ 1 ];
+            $start = $this->parseBuilderDataBind( $where[ 'column' ], $start_value );
+            $end = $this->parseBuilderDataBind( $where[ 'column' ], $end_value );
+            $where_str .= $start . ' AND ' . $end;
+        } elseif ( $value instanceof Raw ) {
+            $where_str .= $value->getValue();
+        }
+        return $where_str;
+    }
+
+    /**
+     * @param $where
+     * @param $logic
+     * @return string
+     */
+    private function parseWhereExistsLogic( $where, $logic ): string
+    {
+        //取了别名后的
+        $operator = $where[ 'operator' ];
+        $value = $where[ 'value' ];
+        $where_str = " {$logic} {$operator} ";
+        if ( $value instanceof Raw ) {
+            $where_str .= '(' . $value->getValue() . ')';
+        } elseif ( $value instanceof Closure ) {
+            // 使用闭包查询
+            $whereClosureStr = $this->parseClosureWhere( $this->newQuery(), $value );
+            $where_str .= '(' . $whereClosureStr . ')';
+        } else {
+            //进行数据bindValue
+            $where_str .= '(' . $this->parseBuilderDataBind( $where[ 'column' ], $value ) . ')';
+        }
+        return $where_str;
+    }
+
+
+    /**
+     * 解析where In exists 等的语句bind方法
+     * @param $value
+     */
+    private function parseWhereSubExpLogic( $where, $logic ): string
+    {
+        //取了别名后的
+        $column = $this->parseKey( $where[ 'column' ] );
+        $operator = $where[ 'operator' ];
+        $value = $where[ 'value' ];
+        $where_str = " {$logic} {$column} {$operator} ";
+        if ( is_array( $value ) ) {
+            $bind_array = [];
+            foreach ( $value as $val ) {
+                $bind_array[] = $this->parseBuilderDataBind( $where[ 'column' ], $val );
+            }
+            $where_str .= '(' . implode( ',', $bind_array ) . ')';
+        } elseif ( $value instanceof Raw ) {
+            $where_str .= $value->getValue();
+        } else {
+            //进行数据bindValue
+            $where_str .= '(' . $this->parseBuilderDataBind( $where[ 'column' ], $value ) . ')';
+        }
+        return $where_str;
     }
 
     /**
@@ -505,6 +570,8 @@ trait Builder
      */
     private function parseKey( $key )
     {
+        //不需要取别名
+        return $key;
         //判断别名
         $alias = $this->getOptions( 'alias' );
         $table = $this->getTable();

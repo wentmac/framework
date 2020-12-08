@@ -40,7 +40,7 @@ trait ParamsBind
     protected function bindValue( $value, int $type = null, string $name = null )
     {
         $name = $name ? : 'TmacBind_' . ( count( $this->bind ) + 1 ) . '_' . mt_rand();
-        
+
         if ( empty( $type ) ) {//根据数据    取 bindType
             $type = $this->getConn()->getType( $value );
         }
@@ -55,7 +55,11 @@ trait ParamsBind
      */
     protected function generateBindName( string $name )
     {
-        return 'TmacBind' . '_' . ( count( $this->bind ) + 1 ) . '_' . $name;
+        $bind_name = 'TmacBind' . '_' . ( count( $this->bind ) + 1 ) . '_' . $name . '_';
+        if ( $this->subQuery === true ) {
+            $bind_name .= mt_rand() . '_';
+        }
+        return $bind_name;
     }
 
 
