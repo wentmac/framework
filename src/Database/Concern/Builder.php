@@ -9,6 +9,7 @@ use Tmac\Database\Raw;
 use Tmac\Database\TmacDbExpr;
 use Exception;
 use Closure;
+use PDO;
 
 trait Builder
 {
@@ -600,10 +601,12 @@ trait Builder
         $name = $this->generateBindName( $key );
 
         //直接从Repository中取字段的schema的类型。减少很个字段的判断
-        if ( empty( $this->schema[ $key ] ) ) {
-            $type = null;
-        } else {
+        if ( is_null( $value ) ) {
+            $type = PDO::PARAM_NULL;
+        } else if ( isset( $this->schema[ $key ] ) ) {
             $type = $this->schema[ $key ];
+        } else {
+            $type = null;
         }
         $this->bindValue( $value, $type, $name );
         return ':' . $name;

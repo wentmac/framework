@@ -41,7 +41,7 @@ trait ParamsBind
     {
         $name = $name ? : 'TmacBind_' . ( count( $this->bind ) + 1 ) . '_' . mt_rand();
 
-        if ( empty( $type ) ) {//根据数据    取 bindType
+        if ( is_null( $type ) ) {//根据数据    取 bindType
             $type = $this->getConn()->getType( $value );
         }
         $this->bind[ $name ] = [ $value, $type ];
