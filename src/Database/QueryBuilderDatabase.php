@@ -155,24 +155,6 @@ class QueryBuilderDatabase
         return $this->table;
     }
 
-
-    public function setLimit( int $limit, int $offset = null )
-    {
-        $this->limit = $limit . ( $offset ? ',' . $offset : '' );
-        return $this;
-    }
-
-    public function getPk()
-    {
-        return $this->pk;
-    }
-
-    public function setPk( $pk )
-    {
-        $this->pk = $pk;
-        return $this;
-    }
-
     public function getPrimaryKey()
     {
         return $this->primaryKey;
