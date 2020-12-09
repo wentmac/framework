@@ -93,7 +93,7 @@ class Route
             //没有二级目录的控制器，默认都在Conttroller目录下的控制器
             $tmac_controller_file = '';
         } else {
-            //如果子目录的控制器  比如 src/Module/web/Controller/user/IndexController.php，取出目录结构
+            //如果子目录的控制器  比如 src/App/web/Controller/user/IndexController.php，取出目录结构
             $tmac_controller_file = $this->getControllerFilePath( $controller );
         }
 

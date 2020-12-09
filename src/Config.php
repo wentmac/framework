@@ -50,7 +50,7 @@ class Config implements ConfigInterface, ArrayAccess
     {
         $root_path = $root_path ? : '';
         $this->common_config_path = $root_path . DIRECTORY_SEPARATOR . 'config' . DIRECTORY_SEPARATOR;
-        $this->app_config_path = $root_path . DIRECTORY_SEPARATOR . 'src' . DIRECTORY_SEPARATOR . 'Module' . DIRECTORY_SEPARATOR . $app_name . DIRECTORY_SEPARATOR . 'Config' . DIRECTORY_SEPARATOR;
+        $this->app_config_path = $root_path . DIRECTORY_SEPARATOR . 'src' . DIRECTORY_SEPARATOR . 'App' . DIRECTORY_SEPARATOR . $app_name . DIRECTORY_SEPARATOR . 'Config' . DIRECTORY_SEPARATOR;
         $this->ext = $ext;
     }
 
