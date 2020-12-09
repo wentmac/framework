@@ -1185,7 +1185,7 @@ abstract class PDOConnection implements DatabaseInterface
      */
     private function parseDataBind( string $name, $value ): string
     {
-        if ( $value instanceof TmacDbExpr ) {
+        if ( $value instanceof Raw ) {
             return $value->getValue();
         } else {
             return ':' . $name;

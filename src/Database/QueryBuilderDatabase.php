@@ -98,7 +98,6 @@ class QueryBuilderDatabase
      */
     public function newQuery(): QueryBuilderDatabase
     {
-        $this->subQuery = true;
         return new static( $this->driverDatabase, $this->table, $this->className, $this->schema, $this->primaryKey );
     }
 
@@ -117,6 +116,8 @@ class QueryBuilderDatabase
      */
     public function setRepository( $repository ): self
     {
+        $this->subQuery = true;
+        
         $this->driverDatabase = $repository->getDriverDatabase();
         $this->table = $repository->getTable();
         $this->className = $repository->getClassName();

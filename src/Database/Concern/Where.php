@@ -44,7 +44,7 @@ trait Where
 
         //如果where的查询值是数组，就转成逗号分割的字符串，如果是默认=于操作的，改成in
         if ( is_array( $value ) ) {
-            //$value = new TmacDbExpr( '(' . implode( ',', $value ) . ')' );
+            //$value = new Raw( '(' . implode( ',', $value ) . ')' );
             $operator = $operator === '=' ? 'IN' : $operator;
         }
 

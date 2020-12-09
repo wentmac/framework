@@ -3,10 +3,8 @@ declare ( strict_types=1 );
 
 namespace Tmac\Database\Concern;
 
-use Tmac\Database\BaseQueryDatabase;
 use Tmac\Database\QueryBuilderDatabase;
 use Tmac\Database\Raw;
-use Tmac\Database\TmacDbExpr;
 use Exception;
 use Closure;
 use PDO;
@@ -116,28 +114,6 @@ trait Builder
     }
 
     /**
-     * 得到某个字段的值
-     * @access public
-     * @param string $field 字段名
-     * @param mixed $default 默认值
-     * @return string
-     */
-    public function value( string $field, $default = null )
-    {
-        $options = $this->parseOptions();
-        if ( $options[ 'field' ] !== null ) {
-            $this->options[ 'field' ] = $field;
-        }
-        $sql = $this->getSelectSql();
-        $binds = $this->getBind();
-        $result = $this->getConn()->fetchColumn( $sql, $binds );
-        if ( $result == false ) {
-            return $default;
-        }
-        return $result;
-    }
-
-    /**
      * 闭包查询
      * @access protected
      * @param Query $query 查询对象
@@ -147,7 +123,6 @@ trait Builder
     protected function parseClosureWhere( QueryBuilderDatabase $query, Closure $value )
     {
         $value( $query );
-
         //print_r( $query->options );
         //$whereClosure = $this->parseWhere( $query->getOptions( 'where' ) ? : [] );
         //$whereClosure = $query->parseWhere( $query->getOptions( 'where' ) ? : [] );
@@ -595,7 +570,7 @@ trait Builder
      */
     private function parseBuilderDataBind( string $key, $value ): string
     {
-        if ( $value instanceof TmacDbExpr ) {
+        if ( $value instanceof Raw ) {
             return $value->getValue();
         }
         $name = $this->generateBindName( $key );

@@ -3,7 +3,6 @@ declare ( strict_types=1 );
 
 namespace Tmac\Database\Concern;
 
-use Tmac\Database\TmacDbExpr;
 use Tmac\Exception\DbException;
 
 trait Orm
@@ -298,5 +297,33 @@ trait Orm
         $res = $this->getConn()->fetchAllObject( $sql, $binds, $this->getClassName(), $master );
         return $res;
     }
+
+
+    /**
+     * 得到某个字段的值
+     * @access public
+     * @param string $field 字段名
+     * @param mixed $default 默认值
+     * @return string
+     */
+    public function value( string $field, $default = null )
+    {
+        $options = $this->parseOptions();
+        if ( $options[ 'field' ] !== null ) {
+            $this->options[ 'field' ] = $field;
+        }
+        $sql = $this->getSelectSql();
+        $binds = $this->getBind();
+
+        if ( $this->getOptions( 'fetch_sql' ) === true ) { //返回构建的SQL语句
+            return $this->getConn()->getRealSql( $sql, $binds );
+        }
+        $result = $this->getConn()->fetchColumn( $sql, $binds );
+        if ( $result == false ) {
+            return $default;
+        }
+        return $result;
+    }
+
 
 }
