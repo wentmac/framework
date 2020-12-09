@@ -97,7 +97,7 @@ class App
         if ( empty( APP_NAME ) ) {
             $web_template_path = '';
         } else {
-            $web_template_path = 'Module' . DIRECTORY_SEPARATOR . APP_NAME . DIRECTORY_SEPARATOR;
+            $web_template_path = 'App' . DIRECTORY_SEPARATOR . APP_NAME . DIRECTORY_SEPARATOR;
         }
         $this->web_template_path = $this->app_path . $web_template_path;
         $this->config_path = $this->root_path . 'config' . DIRECTORY_SEPARATOR;

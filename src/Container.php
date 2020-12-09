@@ -671,7 +671,7 @@ class Container implements ArrayAccess, ContainerInterface
                 $args[] = $param->getDefaultValue();
             } else {
                 // 没有找到构造函数
-                throw new InvalidArgumentException( 'Missing required parameter：' . $name . ' when calling ' . $reflect->getName() );
+                throw new InvalidArgumentException( 'Missing required parameter：' . $name . ' when calling ' . $reflect->getName() . '|' . var_export( $reflect ) );
             }
         }
         return $args;

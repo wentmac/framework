@@ -3,8 +3,6 @@ declare ( strict_types=1 );
 
 namespace Tmac\Database\Concern;
 
-use Tmac\Database\TmacDbExpr;
-
 /**
  * 聚合查询
  * ============================================================================
@@ -27,7 +25,7 @@ trait AggregateQuery
      */
     protected function aggregate( string $aggregate, string $field, bool $force = false )
     {
-        $field = $aggregate . '(' . $field . ')';
+        $field = $aggregate . '(' . $field . ') AS tmac_' . strtolower($aggregate);
 
         $result = $this->value( $field, 0 );
         return $force ? (float) $result : $result;

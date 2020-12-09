@@ -9,12 +9,9 @@
 namespace Tmac\Database\Connector;
 
 use Tmac\Cache\DriverCache;
-use Tmac\Container;
-use Tmac\Contract\ConfigInterface;
 use Tmac\Database\PDOConnection;
-use Tmac\Database\TmacDbExpr;
+use Tmac\Database\Raw;
 use Tmac\Debug;
-use Tmac\Exception\TmacException;
 
 class MysqlConnector extends PDOConnection
 {
@@ -262,7 +259,7 @@ class MysqlConnector extends PDOConnection
     {
         $bind = [];
         foreach ( $data as $key => $value ) {
-            if ( $value instanceof TmacDbExpr ) {
+            if ( $value instanceof Raw ) {
                 $bind[ $key ] = $value->getValue();
             } else {
                 $name = 'TmacBind_' . $k . '_' . $key . '_';

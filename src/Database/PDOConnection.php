@@ -1071,7 +1071,9 @@ abstract class PDOConnection implements DatabaseInterface
     {
         $this->getPDOStatement( $query_sql, $params, $master );
         $result = $this->PDOStatement->fetch( $this->fetchType );
-        $this->numRows = count( $result );
+        if ( $result ) {
+            $this->numRows = 1;
+        }
         return $result;
     }
 
@@ -1104,7 +1106,10 @@ abstract class PDOConnection implements DatabaseInterface
     {
         $this->getPDOStatement( $query_sql, $params, $master );
         $result = $this->PDOStatement->fetch( PDO::FETCH_ASSOC );
-        $this->numRows = count( $result );
+        $this->numRows = 0;
+        if ( $result ) {
+            $this->numRows = 1;
+        }
         return $result;
     }
 
@@ -1185,7 +1190,7 @@ abstract class PDOConnection implements DatabaseInterface
      */
     private function parseDataBind( string $name, $value ): string
     {
-        if ( $value instanceof TmacDbExpr ) {
+        if ( $value instanceof Raw ) {
             return $value->getValue();
         } else {
             return ':' . $name;

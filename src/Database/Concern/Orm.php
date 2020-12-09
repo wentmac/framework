@@ -3,7 +3,6 @@ declare ( strict_types=1 );
 
 namespace Tmac\Database\Concern;
 
-use Tmac\Database\TmacDbExpr;
 use Tmac\Exception\DbException;
 
 trait Orm
@@ -53,11 +52,16 @@ trait Orm
             $set[] = $key . '=' . $this->parseBuilderDataBind( $key, $value );
         }
         $this->options[ 'data' ] = $set;
+
+        $fetch_sql = $this->getOptions( 'fetch_sql' );
+
         $sql = $this->getUpdateSql();
         $binds = $this->getBind();
-        if ( $this->getOptions( 'fetch_sql' ) === true ) { //返回构建的SQL语句
+
+        if ( $fetch_sql === true ) { //返回构建的SQL语句
             return $this->getConn()->getRealSql( $sql, $binds );
         }
+
         $res = $this->getConn()->execute( $sql, $binds );
         return $res;
     }
@@ -84,10 +88,12 @@ trait Orm
         }
         $this->options[ 'field' ] = $columns;
         $this->options[ 'data' ] = $set;
+        $fetch_sql = $this->getOptions( 'fetch_sql' );
+
         $sql = $this->getInsertSql();
         $binds = $this->getBind();
 
-        if ( $this->getOptions( 'fetch_sql' ) === true ) { //返回构建的SQL语句
+        if ( $fetch_sql === true ) { //返回构建的SQL语句
             return $this->getConn()->getRealSql( $sql, $binds );
         }
 
@@ -113,6 +119,7 @@ trait Orm
         if ( 0 === $limit && count( $dataSet ) >= 5000 ) {
             $limit = 1000;
         }
+        $fetch_sql = $this->getOptions( 'fetch_sql' );
         if ( $limit ) {
             // 分批写入 自动启动事务支持
             $this->getConn()->startTrans();
@@ -124,7 +131,7 @@ trait Orm
                     $data = $this->handleInsertAllEntity( $item );
                     $sql = $this->getInsertAllSql( $data, $limit );
                     $binds = $this->getBind();
-                    if ( $this->getOptions( 'fetch_sql' ) === true ) { //返回构建的SQL语句
+                    if ( $fetch_sql === true ) { //返回构建的SQL语句
                         $sql_array[] = $this->getConn()->getRealSql( $sql, $binds );
                     } else {
                         $count += $this->getConn()->execute( $sql, $binds );
@@ -144,9 +151,11 @@ trait Orm
             }
         }
         $data = $this->handleInsertAllEntity( $dataSet );
+
         $sql = $this->getInsertAllSql( $data, $limit );
         $binds = $this->getBind();
-        if ( $this->getOptions( 'fetch_sql' ) === true ) { //返回构建的SQL语句
+
+        if ( $fetch_sql === true ) { //返回构建的SQL语句
             return $this->getConn()->getRealSql( $sql, $binds );
         }
         $res = $this->getConn()->execute( $sql, $binds );
@@ -187,9 +196,12 @@ trait Orm
      */
     public function delete()
     {
+        $fetch_sql = $this->getOptions( 'fetch_sql' );
+
         $sql = $this->getDeleteSql();
         $binds = $this->getBind();
-        if ( $this->getOptions( 'fetch_sql' ) === true ) { //返回构建的SQL语句
+
+        if ( $fetch_sql === true ) { //返回构建的SQL语句
             return $this->getConn()->getRealSql( $sql, $binds );
         }
         $res = $this->getConn()->execute( $sql, $binds );
@@ -223,23 +235,32 @@ trait Orm
             throw new DbException( 'method find must need params:id' );
         }
         $this->where( $this->getPrimaryKey(), $id );
+
+        $fetch_sql = $this->getOptions( 'fetch_sql' );
+
         $sql = $this->getSelectSql();
         $binds = $this->getBind();
-        if ( $this->getOptions( 'fetch_sql' ) === true ) { //返回构建的SQL语句
+
+        if ( $fetch_sql === true ) { //返回构建的SQL语句
             return $this->getConn()->getRealSql( $sql, $binds );
         }
-        $res = $this->getConn()->fetchAssocObject( $sql, $binds, $this->getClassName(), $master );
+
+        $res = $this->getConn()->fetchAssoc( $sql, $binds,  $master );
         return $res;
     }
 
 
     public function findColumn( int $column = 0, bool $master = false )
     {
+        $fetch_sql = $this->getOptions( 'fetch_sql' );
+
         $sql = $this->getSelectSql();
         $binds = $this->getBind();
-        if ( $this->getOptions( 'fetch_sql' ) === true ) { //返回构建的SQL语句
+
+        if ( $fetch_sql === true ) { //返回构建的SQL语句
             return $this->getConn()->getRealSql( $sql, $binds );
         }
+
         $res = $this->getConn()->fetchColumn( $sql, $binds, $column, $master );
         return $res;
     }
@@ -251,11 +272,15 @@ trait Orm
      */
     public function findAll( bool $master = false )
     {
+        $fetch_sql = $this->getOptions( 'fetch_sql' );
+
         $sql = $this->getSelectSql();
         $binds = $this->getBind();
-        if ( $this->getOptions( 'fetch_sql' ) === true ) { //返回构建的SQL语句
+
+        if ( $fetch_sql === true ) { //返回构建的SQL语句
             return $this->getConn()->getRealSql( $sql, $binds );
         }
+
         $res = $this->getConn()->fetchAllObject( $sql, $binds, $this->getClassName(), $master );
         return $res;
     }
@@ -271,9 +296,12 @@ trait Orm
      */
     public function findOne( bool $master = false )
     {
+        $fetch_sql = $this->getOptions( 'fetch_sql' );
+
         $sql = $this->getSelectSql();
         $binds = $this->getBind();
-        if ( $this->getOptions( 'fetch_sql' ) === true ) { //返回构建的SQL语句
+
+        if ( $fetch_sql === true ) { //返回构建的SQL语句
             return $this->getConn()->getRealSql( $sql, $binds );
         }
         $res = $this->getConn()->fetchAssocObject( $sql, $binds, $this->getClassName(), $master );
@@ -290,13 +318,47 @@ trait Orm
     public function findBySql( string $sql, array $bind = [], bool $master = false )
     {
         $this->whereRaw( $sql, $bind );
+        $fetch_sql = $this->getOptions( 'fetch_sql' );
+
         $sql = $this->getSelectSql();
         $binds = $this->getBind();
-        if ( $this->getOptions( 'fetch_sql' ) === true ) { //返回构建的SQL语句
+
+        if ( $fetch_sql === true ) { //返回构建的SQL语句
             return $this->getConn()->getRealSql( $sql, $binds );
         }
         $res = $this->getConn()->fetchAllObject( $sql, $binds, $this->getClassName(), $master );
         return $res;
     }
+
+
+    /**
+     * 得到某个字段的值
+     * @access public
+     * @param string $field 字段名
+     * @param mixed $default 默认值
+     * @return string
+     */
+    public function value( string $field, $default = null )
+    {
+        $options = $this->parseOptions();
+        if ( $options[ 'field' ] !== null ) {
+            $this->options[ 'field' ] = $field;
+        }
+        $fetch_sql = $this->getOptions( 'fetch_sql' );
+
+        $sql = $this->getSelectSql();
+        $binds = $this->getBind();
+
+        if ( $fetch_sql === true ) { //返回构建的SQL语句
+            return $this->getConn()->getRealSql( $sql, $binds );
+        }
+
+        $result = $this->getConn()->fetchColumn( $sql, $binds );
+        if ( $result == false ) {
+            return $default;
+        }
+        return $result;
+    }
+
 
 }
