@@ -219,7 +219,7 @@ trait Builder
     protected function buildWhere( array $where ): string
     {
         $whereStr = $this->parseWhere( $where );
-        return empty( $whereStr ) ? '' : 'WHERE ' . $whereStr;
+        return empty( $whereStr ) ? '' : 'WHERE' . $whereStr;
     }
 
     /**
@@ -574,7 +574,6 @@ trait Builder
             return $value->getValue();
         }
         $name = $this->generateBindName( $key );
-
         //直接从Repository中取字段的schema的类型。减少很个字段的判断
         if ( is_null( $value ) ) {
             $type = PDO::PARAM_NULL;
