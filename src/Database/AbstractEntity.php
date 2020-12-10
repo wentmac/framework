@@ -10,7 +10,6 @@
 
 namespace Tmac\Database;
 
-use ArrayAccess;
 use Tmac\Exception\DbException;
 
 abstract class AbstractEntity

@@ -11,8 +11,6 @@
 namespace Tmac\Database;
 
 
-use Tmac\Contract\DatabaseInterface;
-
 class EntityRepositoryDatabase extends QueryBuilderDatabase
 {
 

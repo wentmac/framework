@@ -9,10 +9,11 @@
 
 namespace Tmac\Cache;
 
-use Tmac\Contract\CacheInterface;
 use Tmac\Contract\ConfigInterface;
+use Tmac\Exception\TmacException;
+use Memcache;
 
-class MemcachedCache implements CacheInterface
+class MemcachedCache extends AbstractCache
 {
 
     /**

@@ -10,11 +10,9 @@
 
 namespace Tmac\Database;
 
-use Tmac\Contract\DatabaseInterface;
 use Tmac\Database\Concern\AggregateQuery;
 use Tmac\Database\Concern\Builder;
 use Tmac\Database\Concern\Orm;
-use Tmac\Database\Concern\Query;
 use Tmac\Database\Concern\ParamsBind;
 use Closure;
 use Tmac\Database\Concern\Where;

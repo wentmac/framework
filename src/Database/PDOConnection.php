@@ -11,7 +11,6 @@ use PDO;
 use PDOStatement;
 use PDOException;
 use Tmac\Cache\DriverCache;
-use Tmac\Contract\ConfigInterface;
 use Tmac\Contract\DatabaseInterface;
 use Tmac\Debug;
 use Tmac\Exception\BindParamException;

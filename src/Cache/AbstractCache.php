@@ -6,8 +6,28 @@
  * http://www.t-mac.org；
  */
 namespace Tmac\Cache;
-abstract class AbstractCache {
-	
+use Tmac\Contract\CacheInterface;
+
+abstract class AbstractCache implements CacheInterface {
+
+    /**
+     * 驱动句柄
+     * @var object
+     */
+    protected $handler = null;
+
+
+    /**
+     * 返回句柄对象，可执行其它高级方法
+     *
+     * @access public
+     * @return object
+     */
+    public function handler()
+    {
+        return $this->handler;
+    }
+
 	/**
 	 * 设置一个缓存变量
 	 * 

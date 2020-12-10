@@ -6,39 +6,71 @@
  * $Id: CacheDriver.class.php 507 2016-10-31 18:21:39Z zhangwentao $
  * http://www.t-mac.org；
  */
+
 namespace Tmac\Cache;
+use Tmac\Contract\ConfigInterface;
+use Tmac\Exception\InvalidArgumentException;
+use Tmac\Exception\TmacException;
+
 class DriverCache
 {
+    /**
+     * @var ConfigInterface $config
+     */
+    private $config;
 
     /**
-     * 缓存实例
-     *
-     * @var object
+     * @var 实例
      */
-    static protected $instance = array();
+    protected $instance;
 
     /**
-     * 取得缓存实例
-     *
-     * @return objeact
-     * @access public
-     * @static
+     * @return mixed
      */
-    public static function getInstance( $name = null, $config = null )
+    public function getInstance()
     {
-        if ( empty( $name ) )
-            $name = $GLOBALS[ 'TmacConfig' ][ 'Cache' ][ 'class' ];
-        $class = 'Cache' . $name;        
-        if ( !isset( self::$instance[ $name ] ) ) {
-            $filename = TMAC_PATH . 'Cache' . DIRECTORY_SEPARATOR . $class . '.class.php';
-            if ( is_file( $filename ) ) {
-                require $filename;
-            } else {
-                throw new TmacException( "没有找到{$class}缓存驱动!" );
-            }
-            self::$instance[ $name ] = new $class( $config );
-        }
-        return self::$instance[ $name ];
+        return $this->instance;
     }
 
+
+    public function __construct( $config )
+    {
+        $this->config = $config;
+        $this->instance = $this->createCacheInstance();
+    }
+
+    /**
+     * @return mixed|AbstractCache
+     * @throws TmacException
+     */
+    public function createCacheInstance()
+    {
+        $config = $this->config;
+        $default = $config[ 'default' ];
+        if ( empty( $config[ 'stores' ][ $default ] ) ) {
+            throw new InvalidArgumentException( "Unsupported cache driver [{$default}]." );
+        }
+        $cache_config = $config[ 'stores' ][ $default ];
+        try {
+            switch ( $default ) {
+                case 'redis':
+                    return new RedisCache( $cache_config );
+                    break;
+                case 'memcached':
+                    return new MemcachedCache( $cache_config );
+                    break;
+                case 'file':
+                    return new FileCache( $cache_config );
+                    break;
+                default:
+                    $dbClassName = ucfirst( $default ) . 'Cache';
+                    return new $dbClassName( $cache_config );
+                    break;
+            }
+        } catch ( TmacException $e ) {
+            throw new TmacException( $e->getMessage() );
+        }
+
+        throw new InvalidArgumentException( "Unsupported cache driver [{$config[ 'driver' ]}]." );
+    }
 }

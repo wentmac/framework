@@ -9,37 +9,32 @@
 
 namespace Tmac\Cache;
 
-use Tmac\Contract\CacheInterface;
-use Tmac\Contract\ConfigInterface;
+use Redis;
+use Tmac\Exception\TmacException;
 
-class RedisCache implements CacheInterface
+class RedisCache extends AbstractCache
 {
 
-    /**
-     * Memcached实例
-     *
-     * @var objeact
-     * @access private
-     */
-    private $redis;
+    /** @var \Predis\Client|\Redis */
+    protected $handler;
 
     /**
-     * 配置文件名称
-     *
-     * @var string
-     * @access private
-     * array(
-     *    'host' 　=> '127.0.0.1',
-     *    'port＇　=>  6379,
-     *    'cluster' => false,
-     *    'persistent' => false,
-     *    'timeout' => 0,
-     *    'read_timeout' => 0,
-     *    'password' => '',
-     *    'prefix' =>＇＇
-     * )
+     * 配置参数
+     * @var array
      */
-    private $redis_config;
+    protected $options = [
+        'client' => 'phpredis',
+        'replication' => false,
+        'service' => 'mymaster',
+        'port' => 6379,
+        'password' => '',
+        'timeout' => 0,
+        'read_timeout' => 0,
+        'expire' => 0,
+        'select' => 0,
+        'persistent' => false,
+        'prefix' => '',
+    ];
 
     /**
      * 构造器
@@ -48,45 +43,85 @@ class RedisCache implements CacheInterface
      * @global array $TmacConfig
      * @access public
      */
-    public function __construct( array $config = [] )
+    public function __construct( array $options = [] )
     {
+        if ( !empty( $options ) ) {
+            $this->options = array_merge( $this->options, $options );
+        }
         if ( !extension_loaded( 'redis' ) ) {
             throw new TmacException( 'redis扩展没有开启!' );
         }
-        if ( empty( $config ) ) {
-            throw new TmacException( 'redis配置不存在!' );
-        }
-        $this->redis_config = $config;
-        $timeout = empty( $redis_config[ 'timeout' ] ) ? 0 : $redis_config[ 'timeout' ];
-        $this->redis = new Redis();
-        if ( isset( $redis_config[ 'persistent' ] ) && $redis_config[ 'persistent' ] ) {
-            $this->redis->pconnect( $redis_config[ 'host' ], $redis_config[ 'port' ], $timeout );
-        } else {
-            $this->redis->connect( $redis_config[ 'host' ], $redis_config[ 'port' ], $timeout );
-        }
-        if ( !empty( $redis_config[ 'prefix' ] ) ) {
-            $this->redis->setOption( Redis::OPT_PREFIX, $redis_config[ 'prefix' ] );
-        }
-        if ( !empty( $redis_config[ 'read_timeout' ] ) ) {
-            $this->redis->setOption( Redis::OPT_READ_TIMEOUT, $redis_config[ 'read_timeout' ] );
-        }
-        if ( !empty( $redis_config[ 'password' ] ) ) {
-            $this->redis->auth( $redis_config[ 'password' ] );
-        }
-        if ( !empty( $redis_config[ 'database' ] ) ) {
-            $this->redis->select( $redis_config[ 'database' ] );
-        }
 
+        if ( $this->options[ 'client' ] == 'predis' ) {
+            $this->pRedisConnect();
+        } else {
+            $this->phpRedisConnect();
+        }
     }
 
     /**
-     * 得到 Redis 原始对象可以有更多的操作
-     *
-     * @return redis object
+     * phpredis driver
      */
-    public function getRedis()
+    public function phpRedisConnect(): void
     {
-        return $this->redis;
+        if ( $this->options[ 'replication' ] === 'cluster' ) {
+            $this->handler = new \RedisCluster( null, $this->options[ 'host' ], (int) $this->options[ 'timeout' ], (int) $this->options[ 'read_timeout' ], (bool) $this->options[ 'persistent' ], $this->options[ 'password' ] );
+            return;
+        }
+        if ( $this->options[ 'replication' ] === 'sentinel' ) {
+            $sentinel = new \RedisSentinel( $this->options[ 'host' ], (int) $this->options[ 'port' ], (int) $this->options[ 'timeout' ], 'persistent_id_' . $this->options[ 'select' ] );
+            //mymaster
+            $address = $sentinel->getMasterAddrByName( $this->options[ 'service' ] );
+            $this->options[ 'host' ] = $address[ 'address' ];
+            $this->options[ 'port' ] = $address[ 'port' ];
+        }
+
+        $this->handler = new Redis();
+
+
+        if ( $this->options[ 'persistent' ] ) {
+            $this->handler->pconnect( $this->options[ 'host' ], (int) $this->options[ 'port' ], (int) $this->options[ 'timeout' ], 'persistent_id_' . $this->options[ 'select' ] );
+        } else {
+            $this->handler->connect( $this->options[ 'host' ], (int) $this->options[ 'port' ], (int) $this->options[ 'timeout' ] );
+        }
+
+        if ( !empty( $this->options[ 'prefix' ] ) ) {
+            $this->handler->setOption( Redis::OPT_PREFIX, $this->options[ 'prefix' ] );
+        }
+
+        if ( !empty( $this->options[ 'read_timeout' ] ) ) {
+            $this->handler->setOption( Redis::OPT_READ_TIMEOUT, $this->options[ 'read_timeout' ] );
+        }
+
+        if ( '' != $this->options[ 'password' ] ) {
+            $this->handler->auth( $this->options[ 'password' ] );
+        }
+
+        if ( !empty( $this->options[ 'database' ] ) ) {
+            $this->handler->select( $this->options[ 'database' ] );
+        }
+    }
+
+    /**
+     * predis driver
+     */
+    public function pRedisConnect()
+    {
+        $params = [];
+        foreach ( $this->options as $key => $val ) {
+            if ( in_array( $key, [ 'aggregate', 'cluster', 'connections', 'exceptions', 'prefix', 'profile', 'replication', 'parameters' ] ) ) {
+                $params[ $key ] = $val;
+                unset( $this->options[ $key ] );
+            }
+        }
+
+        if ( '' == $this->options[ 'password' ] ) {
+            unset( $this->options[ 'password' ] );
+        }
+
+        $this->handler = new \Predis\Client( $this->options, $params );
+
+        $this->options[ 'prefix' ] = '';
     }
 
     /**
@@ -97,9 +132,9 @@ class RedisCache implements CacheInterface
      */
     public function set( $key, $value, $timeOut = 0 )
     {
-        $retRes = $this->redis->set( $key, $value );
+        $retRes = $this->handler->set( $key, $value );
         if ( $timeOut > 0 ) {
-            $this->redis->expire( $key, $timeOut );
+            $this->handler->expire( $key, $timeOut );
         }
 
         return $retRes;
@@ -114,7 +149,7 @@ class RedisCache implements CacheInterface
      */
     public function get( $key )
     {
-        $result = $this->redis->get( $key );
+        $result = $this->handler->get( $key );
         return $result;
     }
 
@@ -127,7 +162,7 @@ class RedisCache implements CacheInterface
      */
     public function del( $key )
     {
-        return $this->redis->del( $key );
+        return $this->handler->del( $key );
     }
 
     /**
@@ -138,7 +173,7 @@ class RedisCache implements CacheInterface
      */
     public function delAll()
     {
-        return $this->redis->flushAll();
+        return $this->handler->flushAll();
     }
 
     /**
@@ -150,7 +185,7 @@ class RedisCache implements CacheInterface
      */
     public function push( $key, $value, $right = true )
     {
-        $rs = $right ? $this->redis->rPush( $key, $value ) : $this->redis->lPush( $key, $value );
+        $rs = $right ? $this->handler->rPush( $key, $value ) : $this->handler->lPush( $key, $value );
 
         return $rs;
     }
@@ -163,7 +198,7 @@ class RedisCache implements CacheInterface
      */
     public function pop( $key, $left = true )
     {
-        $val = $left ? $this->redis->lPop( $key ) : $this->redis->rPop( $key );
+        $val = $left ? $this->handler->lPop( $key ) : $this->handler->rPop( $key );
         return $val;
     }
 
@@ -173,7 +208,7 @@ class RedisCache implements CacheInterface
      */
     public function increment( $key )
     {
-        return $this->redis->incr( $key );
+        return $this->handler->incr( $key );
     }
 
     /**
@@ -182,7 +217,7 @@ class RedisCache implements CacheInterface
      */
     public function decrement( $key )
     {
-        return $this->redis->decr( $key );
+        return $this->handler->decr( $key );
     }
 
     /**
@@ -194,7 +229,7 @@ class RedisCache implements CacheInterface
      */
     public function has( $key )
     {
-        return $rs = $this->redis->exists( $key );
+        return $rs = $this->handler->exists( $key );
     }
 
     /**
@@ -202,9 +237,11 @@ class RedisCache implements CacheInterface
      */
     public function __destruct()
     {
-        if ( !isset( $this->redis_config[ 'persistent' ] ) || empty( $this->redis_config[ 'persistent' ] ) ) {
-            $this->redis->close();
+        /*
+        if (  $this->options[ 'persistent' ] ) ) {
+            $this->handler->close();
         }
+        */
     }
 
 }

@@ -12,6 +12,7 @@ use Tmac\Contract\ConfigInterface;
 use Tmac\Database\Connector\MysqlConnector;
 use Tmac\Debug;
 use Tmac\Cache\DriverCache;
+use Tmac\Exception\InvalidArgumentException;
 use Tmac\Exception\TmacException;
 
 class DriverDatabase
@@ -48,7 +49,8 @@ class DriverDatabase
     {
         $this->config = $config;
         $this->debug = $container->get( 'debug' );
-        $this->cache = $container->get( 'cache' );
+        $cache = $container->get( 'cache' );
+        $this->cache = $cache->getInstance();
         $this->app_debug = $app_debug;
 
         $this->instance = $this->createConnector();
@@ -79,7 +81,7 @@ class DriverDatabase
             throw new TmacException( $e->getMessage() );
         }
 
-        throw new InvalidArgumentException( "Unsupported driver [{$config[ 'driver' ]}]." );
+        throw new InvalidArgumentException( "Unsupported database driver [{$config[ 'driver' ]}]." );
     }
 
 }
