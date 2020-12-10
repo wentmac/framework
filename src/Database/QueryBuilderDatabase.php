@@ -37,6 +37,7 @@ class QueryBuilderDatabase
     protected $table;
     protected $className;//实体类的className
     protected $schema;//实体类的数据表的schema
+    protected $aliasMap = []; //join查询时 别名库的字段schema存储
 
     /**
      * @var string the separator between different fragments of a SQL statement.
@@ -115,7 +116,7 @@ class QueryBuilderDatabase
     public function setRepository( $repository ): self
     {
         $this->subQuery = true;
-        
+
         $this->driverDatabase = $repository->getDriverDatabase();
         $this->table = $repository->getTable();
         $this->className = $repository->getClassName();
@@ -123,7 +124,6 @@ class QueryBuilderDatabase
         $this->primaryKey = $repository->getPrimaryKey();
         return $this;
     }
-
 
     /**
      * @return mixed
@@ -269,6 +269,14 @@ class QueryBuilderDatabase
             $this->bindParams( $condition, $bind );
         }
 
+        $repo_alias_array = $repository->getOptions( 'alias' );
+        $repo_alias = $repo_alias_array[ $repository->getTable() ];
+        $this->aliasMap[$repo_alias] = $repository->getSchema();
+
+        $this_alias_array = $this->getOptions( 'alias' );
+        $this_alias = $this_alias_array[$this->getTable()];
+        $this->aliasMap[$this_alias] = $this->getSchema();
+        
         $this->options[ 'join' ][] = [ $table[ 'table' ] . ' ' . $table[ 'alias' ], strtoupper( $type ), $condition ];
 
         return $this;

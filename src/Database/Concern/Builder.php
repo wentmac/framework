@@ -573,12 +573,25 @@ trait Builder
         if ( $value instanceof Raw ) {
             return $value->getValue();
         }
+
+        //$join_option = $this->getOptions('join');
+        $schema = $this->schema;
+        $schema_key = $key;
+        if ( !empty( $this->getOptions( 'join' ) ) && strpos( $key, '.' ) !== false ) {
+            //join配置存在 并且 字段中存在.的。说明是join方法的
+            //parse_key return ['a', 'is_delete']
+            $parse_key = explode( '.', $key );
+
+            $schema = $this->aliasMap[ $parse_key[ 0 ] ]; //别名表 实体类的 schema  article_id所有的article repo的schema
+            $schema_key = $parse_key[1];//真实字段名，去掉别名的 比如 article_id
+        }
+
         $name = $this->generateBindName( $key );
         //直接从Repository中取字段的schema的类型。减少很个字段的判断
         if ( is_null( $value ) ) {
             $type = PDO::PARAM_NULL;
-        } else if ( isset( $this->schema[ $key ] ) ) {
-            $type = $this->schema[ $key ];
+        } else if ( isset( $schema[ $schema_key ] ) ) {
+            $type = $schema[ $schema_key ];
         } else {
             $type = null;
         }
