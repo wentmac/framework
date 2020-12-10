@@ -281,9 +281,10 @@ class Response
 
     /**
      * Api 返回值函数
-     * @param type $data
-     * @param type $debug
-     * @param type $format
+     * @param array $data
+     * @param int $debug
+     * @param string $format
+     * @return bool
      * @throws TmacException
      */
     public function apiReturn( $data = array(), $debug = 0, $format = 'json' )
@@ -303,7 +304,7 @@ class Response
                 $this->setContent( json_encode( $return, JSON_UNESCAPED_UNICODE ) );
             }
         }
-        $this->send();
+        return $this->send();
     }
 
     /**
@@ -382,7 +383,7 @@ class Response
      * @param mixed $content
      * @return $this
      */
-    private  function setContent( $content )
+    private function setContent( $content )
     {
         $this->content = (string) $content;
         return $this;
@@ -394,7 +395,7 @@ class Response
      * @param string $data 要处理的数据
      * @return void
      */
-    private  function sendContent(): void
+    private function sendContent(): void
     {
         if ( !empty( $this->content ) ) {
             echo $this->content;
@@ -411,16 +412,18 @@ class Response
 
     /**
      * Sends the response to the client.
+     * @return bool
      */
     private function send()
     {
         if ( $this->isSent ) {
-            return;
+            return true;
         }
         $this->sendHeader();
         $this->sendCookie();
         $this->sendContent();
         $this->isSent = true;
+        return true;
     }
 
 }
