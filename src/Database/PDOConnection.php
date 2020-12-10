@@ -253,7 +253,7 @@ abstract class PDOConnection implements DatabaseInterface
         $this->dbConnectionConfig = array_merge( $this->dbConnectionConfig, $this->config );
 
         $this->debug = $debug;
-        $this->cache = $cache;
+        $this->cache = $cache->getInstance();
 
         $this->debug_status = $app_debug;
     }

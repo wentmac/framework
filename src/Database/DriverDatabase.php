@@ -49,8 +49,7 @@ class DriverDatabase
     {
         $this->config = $config;
         $this->debug = $container->get( 'debug' );
-        $cache = $container->get( 'cache' );
-        $this->cache = $cache->getInstance();
+        $this->cache = $container->get( 'cache' );
         $this->app_debug = $app_debug;
 
         $this->instance = $this->createConnector();
