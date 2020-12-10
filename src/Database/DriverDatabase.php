@@ -11,7 +11,6 @@ use Tmac\Container;
 use Tmac\Contract\ConfigInterface;
 use Tmac\Database\Connector\MysqlConnector;
 use Tmac\Debug;
-use Tmac\Cache\DriverCache;
 use Tmac\Exception\InvalidArgumentException;
 use Tmac\Exception\TmacException;
 
@@ -29,11 +28,6 @@ class DriverDatabase
      */
     private $debug;
 
-    /**
-     * @var DriverCache $cache
-     */
-    private $cache;
-
     protected $instance;
 
     /**
@@ -49,7 +43,6 @@ class DriverDatabase
     {
         $this->config = $config;
         $this->debug = $container->get( 'debug' );
-        $this->cache = $container->get( 'cache' );
         $this->app_debug = $app_debug;
 
         $this->instance = $this->createConnector();
@@ -63,17 +56,16 @@ class DriverDatabase
     {
         $config = $this->config;
         $debug = $this->debug;
-        $cache = $this->cache;
         $app_debug = $this->app_debug;
 
         try {
             switch ( $config[ 'type' ] ) {
                 case 'mysql':
-                    return new MysqlConnector( $config, $app_debug, $debug, $cache );
+                    return new MysqlConnector( $config, $debug, $app_debug );
                     break;
                 default:
                     $dbClassName = ucfirst( $config[ 'type' ] ) . 'Connector';
-                    return new $dbClassName( $config, $app_debug, $debug, $cache );
+                    return new $dbClassName( $config, $debug, $app_debug );
                     break;
             }
         } catch ( TmacException $e ) {

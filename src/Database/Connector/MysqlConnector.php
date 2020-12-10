@@ -8,7 +8,6 @@
 
 namespace Tmac\Database\Connector;
 
-use Tmac\Cache\DriverCache;
 use Tmac\Database\PDOConnection;
 use Tmac\Database\Raw;
 use Tmac\Debug;
@@ -19,9 +18,9 @@ class MysqlConnector extends PDOConnection
     /**
      * 初始化
      */
-    public function __construct( $config, $app_debug = false, Debug $debug, DriverCache $cache )
+    public function __construct( $config, Debug $debug, $app_debug = false )
     {
-        parent::__construct( $config, $app_debug, $debug, $cache );
+        parent::__construct( $config, $debug, $app_debug );
     }
 
     /**

@@ -10,7 +10,6 @@ namespace Tmac\Database;
 use PDO;
 use PDOStatement;
 use PDOException;
-use Tmac\Cache\DriverCache;
 use Tmac\Contract\DatabaseInterface;
 use Tmac\Debug;
 use Tmac\Exception\BindParamException;
@@ -55,8 +54,6 @@ abstract class PDOConnection implements DatabaseInterface
         'read_master' => false,
         // 是否严格检查字段是否存在
         'fields_strict' => true,
-        // 开启字段缓存
-        'fields_cache' => false,
         // 监听SQL
         'trigger_sql' => true,
         // Builder类
@@ -65,8 +62,6 @@ abstract class PDOConnection implements DatabaseInterface
         'break_reconnect' => false,
         // 断线标识字符串
         'break_match_str' => [],
-        // 字段缓存路径
-        'schema_cache_path' => '',
     ];
 
     /**
@@ -127,13 +122,6 @@ abstract class PDOConnection implements DatabaseInterface
      */
     protected $numRows = 0;
 
-    /**
-     * 缓存实例
-     *
-     * @var objeact
-     * @access protected
-     */
-    protected $cache;
     protected $is_cache = false;
 
     /**
@@ -247,13 +235,14 @@ abstract class PDOConnection implements DatabaseInterface
     }
 
 
-    protected function __construct( $config, $app_debug = false, Debug $debug, DriverCache $cache )
+    protected function __construct( $config, Debug $debug, $app_debug = false )
     {
         $this->config = $config;
         $this->dbConnectionConfig = array_merge( $this->dbConnectionConfig, $this->config );
 
         $this->debug = $debug;
-        $this->cache = $cache->getInstance();
+        //这里先不注入redis缓存了，防止不需要的时候浪费性能。需要的时候再外部注入缓存方法
+        //$this->cache = $cache->getInstance();
 
         $this->debug_status = $app_debug;
     }
