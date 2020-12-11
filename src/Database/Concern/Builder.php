@@ -577,6 +577,7 @@ trait Builder
         //$join_option = $this->getOptions('join');
         $schema = $this->schema;
         $schema_key = $key;
+        $bind_name_key = $key;
         if ( !empty( $this->getOptions( 'join' ) ) && strpos( $key, '.' ) !== false ) {
             //join配置存在 并且 字段中存在.的。说明是join方法的
             //parse_key return ['a', 'is_delete']
@@ -584,9 +585,11 @@ trait Builder
 
             $schema = $this->aliasMap[ $parse_key[ 0 ] ]; //别名表 实体类的 schema  article_id所有的article repo的schema
             $schema_key = $parse_key[1];//真实字段名，去掉别名的 比如 article_id
+
+            $bind_name_key = $parse_key[ 0 ].'-'.$parse_key[ 1 ];
         }
 
-        $name = $this->generateBindName( $key );
+        $name = $this->generateBindName( $bind_name_key );
         //直接从Repository中取字段的schema的类型。减少很个字段的判断
         if ( is_null( $value ) ) {
             $type = PDO::PARAM_NULL;
