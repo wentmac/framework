@@ -349,7 +349,7 @@ trait Orm
 
         $sql = $this->getSelectSql();
         $binds = $this->getBind();
-
+        
         if ( $fetch_sql === true ) { //返回构建的SQL语句
             return $this->getConn()->getRealSql( $sql, $binds );
         }

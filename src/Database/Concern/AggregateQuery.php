@@ -33,16 +33,22 @@ trait AggregateQuery
 
     /**
      * COUNT查询
+     * 如果你要使用group进行聚合查询，需要自己实现查询，例如：
+     *
+     * Db::table('score')->field('user_id,SUM(score) AS sum_score')->group('user_id')->select();
+     * $zpStarRepository->select( 'user_id,COUNT(score) as sum_score' )->where( 'id', '>', 2 )->group('user_id')->findAll();     
+     *
      * @access public
      * @param string|Raw $field 字段名
      * @return int
      */
     public function count( string $field = '*' ): int
     {
-        $where = $this->getOptions('where');
+        $where = $this->getOptions( 'where' );
         //if group
         if ( !empty( $this->getOptions( 'group' ) ) ) {
-            $field = 'COUNT(DISTINCT ' . $this->getOptions( 'group' ) . ') AS tmac_' . strtolower( $aggregate );;
+            $field = 'COUNT(DISTINCT ' . $this->getOptions( 'group' ) . ') AS tmac_count';
+            $this->removeOption( 'group' );
             $count = $this->value( $field, 0 );
         } else {
             $count = $this->aggregate( 'COUNT', $field );
