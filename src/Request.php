@@ -148,7 +148,7 @@ class Request
      * @param string $default 默认值
      * @return string|array
      */
-    public function getHeader( string $name = '', string $default = null )
+    public function getHeader( string $name = '', $default = null )
     {
         if ( '' === $name ) {
             return $this->header;
