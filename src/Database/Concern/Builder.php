@@ -158,7 +158,7 @@ trait Builder
         foreach ( $join as $item ) {
             [ $table, $type, $on ] = $item;
             $condition = $on;
-            $joinStr .= ' ' . $type . ' JOIN ' . $table . ' ON ' . $condition;
+            $joinStr .= $type . ' JOIN ' . $table . ' ON ' . $condition;
         }
 
         return $joinStr;
