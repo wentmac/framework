@@ -35,7 +35,6 @@ class QueryBuilderDatabase
     protected $pk;
     private $primaryKey; //主键字段名
     protected $table;
-    protected $className;//实体类的className
     protected $schema;//实体类的数据表的schema
     protected $aliasMap = []; //join查询时 别名库的字段schema存储
 
@@ -80,12 +79,11 @@ class QueryBuilderDatabase
     /**
      * 初始化
      */
-    public function __construct( DriverDatabase $connection, $table, $className, $schema, $primaryKey )
+    public function __construct( DriverDatabase $connection, $table, $schema, $primaryKey )
     {
         $this->driverDatabase = $connection;
         $this->conn = $connection->getInstance();
         $this->table = $table;
-        $this->className = $className;
         $this->primaryKey = $primaryKey;
         $this->separator = $this->conn->getSeparator();
     }
@@ -97,7 +95,7 @@ class QueryBuilderDatabase
      */
     public function newQuery(): QueryBuilderDatabase
     {
-        return new static( $this->driverDatabase, $this->table, $this->className, $this->schema, $this->primaryKey );
+        return new static( $this->driverDatabase, $this->table, $this->schema, $this->primaryKey );
     }
 
     /**
@@ -119,18 +117,9 @@ class QueryBuilderDatabase
 
         $this->driverDatabase = $repository->getDriverDatabase();
         $this->table = $repository->getTable();
-        $this->className = $repository->getClassName();
         $this->schema = $repository->getSchema();
         $this->primaryKey = $repository->getPrimaryKey();
         return $this;
-    }
-
-    /**
-     * @return mixed
-     */
-    public function getClassName()
-    {
-        return $this->className;
     }
 
     /**

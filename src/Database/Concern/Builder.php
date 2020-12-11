@@ -586,7 +586,7 @@ trait Builder
             $schema = $this->aliasMap[ $parse_key[ 0 ] ]; //别名表 实体类的 schema  article_id所有的article repo的schema
             $schema_key = $parse_key[1];//真实字段名，去掉别名的 比如 article_id
 
-            $bind_name_key = $parse_key[ 0 ].'-'.$parse_key[ 1 ];
+            $bind_name_key = $parse_key[ 0 ].'_'.$parse_key[ 1 ];
         }
 
         $name = $this->generateBindName( $bind_name_key );

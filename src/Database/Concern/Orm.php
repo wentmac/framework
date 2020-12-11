@@ -8,19 +8,6 @@ use Tmac\Exception\DbException;
 trait Orm
 {
 
-    /**
-     * 返回实体类的名称
-     * 主要的功能是为了实现：当是join查询时不返实例类名
-     * 联表时无法整合多个表的实体
-     */
-    private function parseClassName()
-    {
-        if ( empty( $this->getOptions( 'join' ) ) ) {
-            return $this->getClassName();
-        }
-        return '';
-    }
-
     public function getLastSql()
     {
         return $this->getConn()->getLastSql();
@@ -36,11 +23,13 @@ trait Orm
         if ( !is_object( $entity ) ) {
             throw new DbException( 'save database data must be entity:' . var_export( $entity ) );
         }
+        /*
         //php8中可以使用 $entity::class
         $class_name = get_class( $entity );
         if ( $this->getClassName() !== $class_name ) {
             throw new DbException( 'save database data must be entity:' . $this->getClassName() );
         }
+        */
     }
 
     /**
@@ -257,7 +246,7 @@ trait Orm
             return $this->getConn()->getRealSql( $sql, $binds );
         }
 
-        $res = $this->getConn()->fetchAssocObject( $sql, $binds, $this->getClassName(), $master );
+        $res = $this->getConn()->fetchAssocObject( $sql, $binds, $master );
         return $res;
     }
 
@@ -285,7 +274,6 @@ trait Orm
     public function findAll( bool $master = false )
     {
         $fetch_sql = $this->getOptions( 'fetch_sql' );
-        $class_name = $this->parseClassName();
 
         $sql = $this->getSelectSql();
         $binds = $this->getBind();
@@ -294,7 +282,7 @@ trait Orm
             return $this->getConn()->getRealSql( $sql, $binds );
         }
 
-        $res = $this->getConn()->fetchAllObject( $sql, $binds, $class_name, $master );
+        $res = $this->getConn()->fetchAllObject( $sql, $binds, $master );
         return $res;
     }
 
@@ -310,7 +298,6 @@ trait Orm
     public function findOne( bool $master = false )
     {
         $fetch_sql = $this->getOptions( 'fetch_sql' );
-        $class_name = $this->parseClassName();
 
         $sql = $this->getSelectSql();
         $binds = $this->getBind();
@@ -318,7 +305,7 @@ trait Orm
         if ( $fetch_sql === true ) { //返回构建的SQL语句
             return $this->getConn()->getRealSql( $sql, $binds );
         }
-        $res = $this->getConn()->fetchAssocObject( $sql, $binds, $class_name, $master );
+        $res = $this->getConn()->fetchAssocObject( $sql, $binds, $master );
         return $res;
     }
 
@@ -333,7 +320,6 @@ trait Orm
     {
         $this->whereRaw( $sql, $bind );
         $fetch_sql = $this->getOptions( 'fetch_sql' );
-        $class_name = $this->parseClassName();
 
         $sql = $this->getSelectSql();
         $binds = $this->getBind();
@@ -341,7 +327,7 @@ trait Orm
         if ( $fetch_sql === true ) { //返回构建的SQL语句
             return $this->getConn()->getRealSql( $sql, $binds );
         }
-        $res = $this->getConn()->fetchAllObject( $sql, $binds, $class_name, $master );
+        $res = $this->getConn()->fetchAllObject( $sql, $binds, $master );
         return $res;
     }
 

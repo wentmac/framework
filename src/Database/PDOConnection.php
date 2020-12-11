@@ -1109,7 +1109,7 @@ abstract class PDOConnection implements DatabaseInterface
      * @param array $params
      * @param array $types
      */
-    public function fetchAssocObject( $query_sql, array $params = [], $class_name = '', bool $master = false )
+    public function fetchAssocObject( $query_sql, array $params = [], bool $master = false, $class_name = '' )
     {
         $this->getPDOStatement( $query_sql, $params, $master );
         if ( empty( $class_name ) ) {
@@ -1155,7 +1155,7 @@ abstract class PDOConnection implements DatabaseInterface
      * @param array $params
      * @param array $types
      */
-    public function fetchAllObject( $query_sql, array $params = [], $class_name = '', bool $master = false )
+    public function fetchAllObject( $query_sql, array $params = [], bool $master = false, $class_name = '' )
     {
         $this->getPDOStatement( $query_sql, $params, $master );
         if ( empty( $class_name ) ) {
