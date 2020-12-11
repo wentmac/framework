@@ -39,6 +39,7 @@ trait AggregateQuery
      */
     public function count( string $field = '*' ): int
     {
+        //todo if group
         $count = $this->aggregate( 'COUNT', $field );
         return (int) $count;
     }
