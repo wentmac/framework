@@ -11,7 +11,6 @@ use PDO;
 
 trait Builder
 {
-
     /**
      * 生成查询sql语句
      * @return mixed
@@ -19,7 +18,6 @@ trait Builder
     public function getSelectSql()
     {
         $options = $this->parseOptions();
-        $this->conditionBuilders[ 'distinct' ] = $this->buildDistinct( $options[ 'distinct' ] );
         $this->conditionBuilders[ 'select' ] = $this->buildSelect( $options[ 'field' ], $options[ 'distinct' ] );
         $this->conditionBuilders[ 'from' ] = $this->buildFrom( $options[ 'table' ] );
         $this->conditionBuilders[ 'join' ] = $this->buildJoin( $options[ 'join' ] );
@@ -187,29 +185,6 @@ trait Builder
         $select = $distinct ? 'SELECT DISTINCT' : 'SELECT';
         return $select . $this->separator . $field;
     }
-
-    /**
-     * distinct分析
-     *
-     * ->distinct('id')->
-     * ->distinct(true)->select('id')
-     * ->select('id',true)
-     *
-     * @access protected
-     * @param Query $query 查询对象
-     * @param mixed $distinct
-     * @return string
-     */
-    protected function buildDistinct( $field ): string
-    {
-        if ( !empty( $field ) ) {
-            $field !== true && $this->select( $field );
-            return 'DISTINCT ';
-        } else {
-            return '';
-        }
-    }
-
 
     /**
      * 解析 where

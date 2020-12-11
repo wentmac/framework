@@ -260,12 +260,12 @@ class QueryBuilderDatabase
 
         $repo_alias_array = $repository->getOptions( 'alias' );
         $repo_alias = $repo_alias_array[ $repository->getTable() ];
-        $this->aliasMap[$repo_alias] = $repository->getSchema();
+        $this->aliasMap[ $repo_alias ] = $repository->getSchema();
 
         $this_alias_array = $this->getOptions( 'alias' );
-        $this_alias = $this_alias_array[$this->getTable()];
-        $this->aliasMap[$this_alias] = $this->getSchema();
-        
+        $this_alias = $this_alias_array[ $this->getTable() ];
+        $this->aliasMap[ $this_alias ] = $this->getSchema();
+
         $this->options[ 'join' ][] = [ $table[ 'table' ] . ' ' . $table[ 'alias' ], strtoupper( $type ), $condition ];
 
         return $this;

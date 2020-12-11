@@ -61,7 +61,6 @@ class MysqlConnector extends PDOConnection
     public function buildSelectSql( $conditionBuilders )
     {
         $clauses = [
-            $conditionBuilders[ 'distinct' ],
             $conditionBuilders[ 'select' ],
             $conditionBuilders[ 'from' ],
             $conditionBuilders[ 'join' ],

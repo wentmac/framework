@@ -25,7 +25,7 @@ trait AggregateQuery
      */
     protected function aggregate( string $aggregate, string $field, bool $force = false )
     {
-        $field = $aggregate . '(' . $field . ') AS tmac_' . strtolower($aggregate);
+        $field = $aggregate . '(' . $field . ') AS tmac_' . strtolower( $aggregate );
 
         $result = $this->value( $field, 0 );
         return $force ? (float) $result : $result;
@@ -39,8 +39,16 @@ trait AggregateQuery
      */
     public function count( string $field = '*' ): int
     {
-        //todo if group
-        $count = $this->aggregate( 'COUNT', $field );
+        $where = $this->getOptions('where');
+        //if group
+        if ( !empty( $this->getOptions( 'group' ) ) ) {
+            $field = 'COUNT(DISTINCT ' . $this->getOptions( 'group' ) . ') AS tmac_' . strtolower( $aggregate );;
+            $count = $this->value( $field, 0 );
+        } else {
+            $count = $this->aggregate( 'COUNT', $field );
+        }
+        //这里count因为后续会有可能接着查询数据，可以复用where条件
+        $this->options[ 'where' ] = $where;
         return (int) $count;
     }
 
