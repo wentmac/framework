@@ -464,14 +464,18 @@ class Container implements ArrayAccess, ContainerInterface
      * 获取目标实例
      *
      * @param string $abstract_alias_name 原始绑定需要调用的别名
+     *
      * 构造函数参数值列表，参数应按顺序提供
      * @param array $params a list of constructor parameter values. The parameters should be provided in the order
      * they appear in the constructor declaration. If you want to skip some parameters, you should index the remaining
      * ones with the integers that represent their positions in the constructor parameter list.
      * a list of name-value pairs that will be used to initialize the object properties
      *
-     * 用来初始化对象属性的名称-值对列表用来初始化对象属性的名称-值对列表
-     * @param array $properties
+     *
+     * @param array $properties 用来初始化对象属性的名称-值对列表用来初始化对象属性的名称-值对列表
+     * class method可以用来初始化时执行
+     *
+     *
      * @return mixed|object
      * @throws Exception
      */
@@ -624,7 +628,9 @@ class Container implements ArrayAccess, ContainerInterface
         if ( $method->isPublic() === FALSE ) {
             return true;
         }
+        // class中_init方法的参数，如果有参数，自动进行依赖注入
         $args = $this->bindParams( $method );
+        // 执行反射方法 使用数组给方法传送参数，并执行他。
         $method->invokeArgs( $object, $args );
         //$method->invoke( $object );
 
@@ -777,8 +783,10 @@ class Container implements ArrayAccess, ContainerInterface
                 //调用该方法（__make），因为是静态的，所以第一个参数是null
                 //因此，可得知，一个类中，如果有__make方法，在类实例化之前会首先被调用
                 if ( is_array( $args ) ) {
+                    //执行一个反射的方法。 使用数组给方法传送参数，并执行他。
                     $method->invokeArgs( $class, $args );
                 } else {
+                    //执行一个反射的方法。
                     $method->invoke( $class, $args );
                 }
             }
