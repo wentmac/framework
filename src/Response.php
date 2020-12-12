@@ -287,7 +287,7 @@ class Response
      * @return bool
      * @throws TmacException
      */
-    public function apiReturn( $data = array(), $debug = 0, $format = 'json' )
+    public function apiReturn( $data = [], $debug = 0, $format = 'json' )
     {
         $return = array(
             'code' => 0,
