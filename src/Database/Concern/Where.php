@@ -200,7 +200,7 @@ trait Where
      * @param $column
      * @param null $operator
      * @param null $value
-     * @return mixed
+     * @return $this
      */
     public function whereIn( $column, $operator = null, $value = null )
     {
@@ -212,7 +212,7 @@ trait Where
      * @param $column
      * @param null $operator
      * @param null $value
-     * @return mixed
+     * @return $this
      */
     public function orwhereIn( $column, $value = null )
     {
@@ -224,7 +224,7 @@ trait Where
      * @param $column
      * @param null $operator
      * @param null $value
-     * @return mixed
+     * @return $this
      */
     public function andwhereIn( $column, $value = null )
     {
@@ -237,7 +237,7 @@ trait Where
      * @param $column
      * @param null $operator
      * @param null $value
-     * @return mixed
+     * @return $this
      */
     public function whereNotIn( $column, $value = null )
     {
@@ -249,7 +249,7 @@ trait Where
      * @param $column
      * @param null $operator
      * @param null $value
-     * @return mixed
+     * @return $this
      */
     public function orWhereNotIn( $column, $value = null )
     {
@@ -262,7 +262,7 @@ trait Where
      * @param $column
      * @param null $operator
      * @param null $value
-     * @return mixed
+     * @return $this
      */
     public function andWhereNotIn( $column, $value = null )
     {
@@ -274,7 +274,7 @@ trait Where
      * @param $column
      * @param null $operator
      * @param null $value
-     * @return mixed
+     * @return $this
      */
     public function whereLike( $column, $value = null )
     {
@@ -286,7 +286,7 @@ trait Where
      * @param $column
      * @param null $operator
      * @param null $value
-     * @return mixed
+     * @return $this
      */
     public function orWhereLike( $column, $value = null )
     {
@@ -298,7 +298,7 @@ trait Where
      * @param $column
      * @param null $operator
      * @param null $value
-     * @return mixed
+     * @return $this
      */
     public function andWhereLike( $column, $value = null )
     {
@@ -310,7 +310,7 @@ trait Where
      * @param $column
      * @param null $operator
      * @param null $value
-     * @return mixed
+     * @return $this
      */
     public function whereBetween( $column, $value = null )
     {
@@ -322,7 +322,7 @@ trait Where
      * @param $column
      * @param null $operator
      * @param null $value
-     * @return mixed
+     * @return $this
      */
     public function orWhereBetween( $column, $value = null )
     {
@@ -334,7 +334,7 @@ trait Where
      * @param $column
      * @param null $operator
      * @param null $value
-     * @return mixed
+     * @return $this
      */
     public function andWhereBetween( $column, $value = null )
     {
