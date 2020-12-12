@@ -154,7 +154,11 @@ class Request
             return $this->header;
         }
         $name = str_replace( '_', '-', strtolower( $name ) );
-        return $this->header[ $name ] ?? $default;
+
+        if ( isset( $this->header[ $name ] ) && $this->header[ $name ] === '' && $default !== null ) {
+            return $default;
+        }
+        return $this->header[ $name ];
     }
 
     /**
@@ -189,7 +193,10 @@ class Request
             $name = strtoupper( $name );
         }
 
-        return $this->server[ $name ] ?? $default;
+        if ( isset( $this->server[ $name ] ) && $this->server[ $name ] === '' && $default !== null ) {
+            return $default;
+        }
+        return $this->server[ $name ];
     }
 
 
@@ -246,7 +253,10 @@ class Request
         if ( empty( $name ) ) {
             return $this->request;
         }
-        return $this->request[ $name ] ?? $default;
+        if ( isset( $this->request[ $name ] ) && $this->request[ $name ] === '' && $default !== null ) {
+            return $default;
+        }
+        return $this->request[ $name ];
     }
 
     /**
@@ -259,7 +269,10 @@ class Request
         if ( empty( $name ) ) {
             return $this->get;
         }
-        return $this->get[ $name ] ?? $default;
+        if ( isset( $this->get[ $name ] ) && $this->get[ $name ] === '' && $default !== null ) {
+            return $default;
+        }
+        return $this->get[ $name ];
     }
 
     /**
@@ -273,7 +286,10 @@ class Request
         if ( empty( $name ) ) {
             return $this->post;
         }
-        return $this->post[ $name ] ?? $default;
+        if ( isset( $this->post[ $name ] ) && $this->post[ $name ] === '' && $default !== null ) {
+            return $default;
+        }
+        return $this->post[ $name ];
     }
 
     /**
@@ -329,7 +345,10 @@ class Request
         if ( empty( $name ) ) {
             return $this->input_data;
         }
-        return $this->input_data[ $name ] ?? $default;
+        if ( isset( $this->input_data[ $name ] ) && $this->input_data[ $name ] === '' && $default !== null ) {
+            return $default;
+        }
+        return $this->input_data[ $name ];
     }
 
 
