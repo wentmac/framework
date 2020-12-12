@@ -329,6 +329,10 @@ class QueryBuilderDatabase
     }
 
 
+    /**
+     * @param $table
+     * @return $this
+     */
     public function from( $table )
     {
         if ( is_array( $table ) ) {
@@ -417,7 +421,6 @@ class QueryBuilderDatabase
     public function select( $columns = [ '*' ] )
     {
         $this->columns = [];
-        $this->bindings[ 'select' ] = [];
         $columns = is_array( $columns ) ? $columns : func_get_args();
         $this->options[ 'field' ] = implode( ',', $columns );
         return $this;
@@ -448,7 +451,7 @@ class QueryBuilderDatabase
      * @param integer $page 当前的页数
      * @param integer $listNum 每页显示的数据行数
      *
-     * @return object
+     * @return $this
      */
     public function page( int $page, int $listNum = 10 )
     {
