@@ -78,7 +78,6 @@ trait Where
         } elseif ( $this->invalidOperatorAndValue( $operator, $value ) ) {
             throw new InvalidArgumentException( 'Illegal operator and value combination.' );
         }
-
         return [ $value, $operator ];
     }
 

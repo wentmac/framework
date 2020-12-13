@@ -274,12 +274,20 @@ trait Orm
     public function findAll( bool $master = false )
     {
         $fetch_sql = $this->getOptions( 'fetch_sql' );
+        $debug_sql = $this->getOptions( 'debug_sql' );
 
         $sql = $this->getSelectSql();
         $binds = $this->getBind();
 
         if ( $fetch_sql === true ) { //返回构建的SQL语句
             return $this->getConn()->getRealSql( $sql, $binds );
+        }
+        if ( $debug_sql === true ) {
+            return [
+                'sql' => $sql,
+                'binds' => $binds,
+                'result_sql' => $this->getConn()->getRealSql( $sql, $binds )
+            ];
         }
 
         $res = $this->getConn()->fetchAllObject( $sql, $binds, $master );
@@ -349,7 +357,7 @@ trait Orm
 
         $sql = $this->getSelectSql();
         $binds = $this->getBind();
-        
+
         if ( $fetch_sql === true ) { //返回构建的SQL语句
             return $this->getConn()->getRealSql( $sql, $binds );
         }
