@@ -120,10 +120,17 @@ trait Builder
      */
     protected function parseClosureWhere( QueryBuilderDatabase $query, Closure $value )
     {
+        //作用一：子查询时bindValue的字段key值最后增加mr_rand方法，防止重名，只限只查询时使用
+        //作用二：和alias一起 用来判断在绑定字段key别名的时候，是否从aliasMap中取schema
         $query->subQuery = true;
+        //如果表实体类进行了join联表查询操作，这里在join后进行子查询的时候。会把join时设置的aliasMap schema的映射关系带入到 子查询闭包的查询类中。这样可以得到正确a. b.等Field的schema
         $query->aliasMap = $this->aliasMap;
-        $query->options['join'] = $this->getOptions('join');
-        $query->options['alias'] = $this->getOptions('alias');
+        //如果当前查询中有配置 别名查询，则设置子查询别名状态 为true 这样子查询闭包在执行 ->parseBuilderDataBind方法中使用aliasMap来查询key的正确schema
+        if ( !empty( $this->getOptions( 'alias' ) ) ) {
+            $query->subQueryAlias = true;
+        }
+        //$query->options['join'] = $this->getOptions('join');
+        //$query->options['alias'] = $this->getOptions('alias');
         $value( $query );
         //print_r( $query->options );
         //$whereClosure = $this->parseWhere( $query->getOptions( 'where' ) ? : [] );
@@ -567,16 +574,10 @@ trait Builder
         $schema = $this->schema;
         $schema_key = $key;
         $bind_name_key = $key;
-        if ( !empty( $this->getOptions( 'join' ) ) && strpos( $key, '.' ) !== false ) {
-            //join配置存在 并且 字段中存在.的。说明是join方法的
+        if ( ( !empty( $this->getOptions( 'join' ) ) || $this->subQueryAlias === true ) && strpos( $key, '.' ) !== false ) {
+            //条件一：join配置存在 并且 字段中存在.的。说明是join方法的
+            //条件二：如果是子查询并且设置了alias别名，且字段key中有联合查询的关键字. 就从aliasMap 别名schema中查询真实的字段名。
             //parse_key return ['a', 'is_delete']
-            $parse_key = explode( '.', $key );
-
-            $schema = $this->aliasMap[ $parse_key[ 0 ] ] ?? $this->schema; //别名表 实体类的 schema  article_id所有的article repo的schema
-            $schema_key = $parse_key[ 1 ];//真实字段名，去掉别名的 比如 article_id
-
-            $bind_name_key = $parse_key[ 0 ] . '_' . $parse_key[ 1 ];
-        } else if ( $this->subQuery === true && !empty( $this->getOptions( 'alias' ) ) && strpos( $key, '.' ) !== false ) {
             $parse_key = explode( '.', $key );
 
             $schema = $this->aliasMap[ $parse_key[ 0 ] ] ?? $this->schema; //别名表 实体类的 schema  article_id所有的article repo的schema

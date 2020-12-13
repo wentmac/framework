@@ -77,6 +77,13 @@ class QueryBuilderDatabase
     protected $subQuery = false;
 
     /**
+     * 子查询是否有设置别名
+     * 如果设备了别名需要在子查询的->parseBuilderDataBind方法中使用aliasMap来查询key的正确schema
+     * @var bool
+     */
+    protected $subQueryAlias = false;
+
+    /**
      * 初始化
      */
     public function __construct( DriverDatabase $connection, $table, $schema, $primaryKey )
