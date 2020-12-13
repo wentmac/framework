@@ -158,7 +158,7 @@ class Request
         if ( isset( $this->header[ $name ] ) && $this->header[ $name ] === '' && $default !== null ) {
             return $default;
         }
-        return $this->header[ $name ];
+        return $this->header[ $name ] ?? $default;
     }
 
     /**
@@ -196,7 +196,7 @@ class Request
         if ( isset( $this->server[ $name ] ) && $this->server[ $name ] === '' && $default !== null ) {
             return $default;
         }
-        return $this->server[ $name ];
+        return $this->server[ $name ] ?? $default;
     }
 
 
@@ -256,7 +256,7 @@ class Request
         if ( isset( $this->request[ $name ] ) && $this->request[ $name ] === '' && $default !== null ) {
             return $default;
         }
-        return $this->request[ $name ];
+        return $this->request[ $name ] ?? $default;
     }
 
     /**
@@ -272,7 +272,7 @@ class Request
         if ( isset( $this->get[ $name ] ) && $this->get[ $name ] === '' && $default !== null ) {
             return $default;
         }
-        return $this->get[ $name ];
+        return $this->get[ $name ] ?? $default;
     }
 
     /**
@@ -289,7 +289,7 @@ class Request
         if ( isset( $this->post[ $name ] ) && $this->post[ $name ] === '' && $default !== null ) {
             return $default;
         }
-        return $this->post[ $name ];
+        return $this->post[ $name ] ?? $default;
     }
 
     /**
@@ -348,7 +348,7 @@ class Request
         if ( isset( $this->input_data[ $name ] ) && $this->input_data[ $name ] === '' && $default !== null ) {
             return $default;
         }
-        return $this->input_data[ $name ];
+        return $this->input_data[ $name ] ?? $default;
     }
 
 
