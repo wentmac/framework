@@ -120,11 +120,20 @@ trait Builder
      */
     protected function parseClosureWhere( QueryBuilderDatabase $query, Closure $value )
     {
+        $query->subQuery = true;
+        $query->aliasMap = $this->aliasMap;
+        $query->options['join'] = $this->getOptions('join');
+        $query->options['alias'] = $this->getOptions('alias');
         $value( $query );
         //print_r( $query->options );
         //$whereClosure = $this->parseWhere( $query->getOptions( 'where' ) ? : [] );
         //$whereClosure = $query->parseWhere( $query->getOptions( 'where' ) ? : [] );
-        $whereClosure = $query->getSelectSql();
+        if ( $query->getTable() == $this->getTable() ) {
+            //同一张表使用 的是闭包带括号的复杂查询，不需要在子查询中带select * form table where
+            $whereClosure = $query->parseWhere( $query->getOptions( 'where' ) );
+        } else {
+            $whereClosure = $query->getSelectSql();
+        }
         $this->bind( $query->getBind( false ) );
         $where = '( ' . $whereClosure . ' )';
         return $where ?? '';
@@ -365,10 +374,15 @@ trait Builder
         $type = $value[ 'type' ];
         $where = '';
 
-        if ( $type == 'sql' && $value[ 'value' ] instanceof Raw ) {
+        /*
+         if ( $type == 'sql' && $value[ 'value' ] instanceof Raw ) {
             $where = " {$logic} " . $value[ 'value' ]->getValue();
         } elseif ( $type == 'raw' && $value[ 'value' ] instanceof Raw ) {
             $where = $value[ 'value' ]->getValue();
+        }
+         */
+        if ( in_array( $type, [ 'sql', 'raw' ] ) && $value[ 'value' ] instanceof Raw ) {
+            $where = " {$logic} " . $value[ 'value' ]->getValue();
         } elseif ( true === $value[ 'value' ] ) {
             $where = ' ' . $logic . ' 1 ';
         } elseif ( $value[ 'value' ] instanceof Closure ) {
@@ -558,10 +572,17 @@ trait Builder
             //parse_key return ['a', 'is_delete']
             $parse_key = explode( '.', $key );
 
-            $schema = $this->aliasMap[ $parse_key[ 0 ] ]; //别名表 实体类的 schema  article_id所有的article repo的schema
-            $schema_key = $parse_key[1];//真实字段名，去掉别名的 比如 article_id
+            $schema = $this->aliasMap[ $parse_key[ 0 ] ] ?? $this->schema; //别名表 实体类的 schema  article_id所有的article repo的schema
+            $schema_key = $parse_key[ 1 ];//真实字段名，去掉别名的 比如 article_id
 
-            $bind_name_key = $parse_key[ 0 ].'_'.$parse_key[ 1 ];
+            $bind_name_key = $parse_key[ 0 ] . '_' . $parse_key[ 1 ];
+        } else if ( $this->subQuery === true && !empty( $this->getOptions( 'alias' ) ) && strpos( $key, '.' ) !== false ) {
+            $parse_key = explode( '.', $key );
+
+            $schema = $this->aliasMap[ $parse_key[ 0 ] ] ?? $this->schema; //别名表 实体类的 schema  article_id所有的article repo的schema
+            $schema_key = $parse_key[ 1 ];//真实字段名，去掉别名的 比如 article_id
+
+            $bind_name_key = $parse_key[ 0 ] . '_' . $parse_key[ 1 ];
         }
 
         $name = $this->generateBindName( $bind_name_key );

@@ -113,8 +113,6 @@ class QueryBuilderDatabase
      */
     public function setRepository( $repository ): self
     {
-        $this->subQuery = true;
-
         $this->driverDatabase = $repository->getDriverDatabase();
         $this->table = $repository->getTable();
         $this->schema = $repository->getSchema();
@@ -203,7 +201,7 @@ class QueryBuilderDatabase
             }
         }
 
-        foreach ( [ 'master', 'lock', 'fetch_sql', 'distinct', 'procedure' ] as $name ) {
+        foreach ( [ 'master', 'lock', 'fetch_sql', 'debug_sql', 'distinct', 'procedure' ] as $name ) {
             if ( !isset( $options[ $name ] ) ) {
                 $options[ $name ] = false;
             }
@@ -638,6 +636,18 @@ class QueryBuilderDatabase
     public function fetchSql( bool $fetch = true )
     {
         $this->options[ 'fetch_sql' ] = $fetch;
+        return $this;
+    }
+
+    /**
+     * 返回sql原生语法和bindValue Array和最终生成的语法
+     * @access public
+     * @param bool $fetch 是否返回sql
+     * @return $this|Fetch
+     */
+    public function debugSql( bool $fetch = true )
+    {
+        $this->options[ 'debug_sql' ] = $fetch;
         return $this;
     }
 

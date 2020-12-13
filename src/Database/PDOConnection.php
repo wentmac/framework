@@ -577,8 +577,13 @@ abstract class PDOConnection implements DatabaseInterface
     public function getRealSql( string $sql, array $binds = [] ): string
     {
         foreach ( $binds as $key => $val ) {
-            $value = $val;
-            $type = $this->getType( $val );
+            if ( is_array( $val ) ) {
+                $value = $val[0];
+                $type = $val[1];
+            } else {
+                $value = $val;
+                $type = $this->getType( $val );
+            }
 
             if ( ( self::PARAM_FLOAT == $type || PDO::PARAM_STR == $type ) && is_string( $value ) ) {
                 $value = '\'' . addslashes( $value ) . '\'';

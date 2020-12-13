@@ -5,6 +5,7 @@ namespace Tmac\Database\Concern;
 
 use Tmac\Database\QueryBuilderDatabase;
 use Tmac\Database\Raw;
+use Closure;
 
 trait Where
 {
@@ -33,7 +34,7 @@ trait Where
         if ( $column instanceof Closure ) {
             $subWhereSql = $this->parseClosureWhere( $this->newQuery(), $column );
             if ( $subWhereSql ) {
-                $value = $boolean . ' ' . new Raw( $subWhereSql );
+                $value = new Raw( $subWhereSql );
                 $type = 'raw';
                 $this->options[ 'where' ][] = compact(
                     'type', 'value', 'boolean'
@@ -46,6 +47,10 @@ trait Where
         if ( is_array( $value ) ) {
             //$value = new Raw( '(' . implode( ',', $value ) . ')' );
             $operator = $operator === '=' ? 'IN' : $operator;
+        }
+        //像like这些操作符号转成大写
+        if ( !empty( $operator ) ) {
+            $operator = strtoupper( $operator );
         }
 
         $type = 'basic';
@@ -74,7 +79,7 @@ trait Where
             throw new InvalidArgumentException( 'Illegal operator and value combination.' );
         }
 
-        return [ $value, strtoupper( $operator ) ];
+        return [ $value, $operator ];
     }
 
     /**
