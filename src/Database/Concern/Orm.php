@@ -35,7 +35,7 @@ trait Orm
     /**
      * 如果实体中包含主键的话，就是使用主键更新
      * @param $entity
-     * @return mixed
+     * @return mixed|array
      * @throws DbException
      */
     public function update( $entity )
@@ -55,12 +55,20 @@ trait Orm
         $this->options[ 'data' ] = $set;
 
         $fetch_sql = $this->getOptions( 'fetch_sql' );
+        $debug_sql = $this->getOptions( 'debug_sql' );
 
         $sql = $this->getUpdateSql();
         $binds = $this->getBind();
 
         if ( $fetch_sql === true ) { //返回构建的SQL语句
             return $this->getConn()->getRealSql( $sql, $binds );
+        }
+        if ( $debug_sql === true ) {
+            return [
+                'sql' => $sql,
+                'binds' => $binds,
+                'result_sql' => $this->getConn()->getRealSql( $sql, $binds )
+            ];
         }
 
         $res = $this->getConn()->execute( $sql, $binds );
@@ -70,7 +78,7 @@ trait Orm
     /**
      * INSERT 语法
      * @param $entity
-     * @return mixed
+     * @return mixed|array
      * @throws DbException
      */
     public function insert( $entity )
@@ -90,12 +98,20 @@ trait Orm
         $this->options[ 'field' ] = $columns;
         $this->options[ 'data' ] = $set;
         $fetch_sql = $this->getOptions( 'fetch_sql' );
+        $debug_sql = $this->getOptions( 'debug_sql' );
 
         $sql = $this->getInsertSql();
         $binds = $this->getBind();
 
         if ( $fetch_sql === true ) { //返回构建的SQL语句
             return $this->getConn()->getRealSql( $sql, $binds );
+        }
+        if ( $debug_sql === true ) {
+            return [
+                'sql' => $sql,
+                'binds' => $binds,
+                'result_sql' => $this->getConn()->getRealSql( $sql, $binds )
+            ];
         }
 
         $res = $this->getConn()->execute( $sql, $binds );
@@ -193,17 +209,25 @@ trait Orm
 
     /**
      * 执行删除
-     * @return mixed
+     * @return mixed|array
      */
     public function delete()
     {
         $fetch_sql = $this->getOptions( 'fetch_sql' );
+        $debug_sql = $this->getOptions( 'debug_sql' );
 
         $sql = $this->getDeleteSql();
         $binds = $this->getBind();
 
         if ( $fetch_sql === true ) { //返回构建的SQL语句
             return $this->getConn()->getRealSql( $sql, $binds );
+        }
+        if ( $debug_sql === true ) {
+            return [
+                'sql' => $sql,
+                'binds' => $binds,
+                'result_sql' => $this->getConn()->getRealSql( $sql, $binds )
+            ];
         }
         $res = $this->getConn()->execute( $sql, $binds );
         return $res;
@@ -228,7 +252,7 @@ trait Orm
      * Finds an entity by its primary key / identifier.
      *
      * @param mixed $id The identifier.
-     * @return object|null The entity instance or NULL if the entity can not be found.
+     * @return object|null|array The entity instance or NULL if the entity can not be found.
      */
     public function find( $id, bool $master = false )
     {
@@ -238,6 +262,7 @@ trait Orm
         $this->where( $this->getPrimaryKey(), $id );
 
         $fetch_sql = $this->getOptions( 'fetch_sql' );
+        $debug_sql = $this->getOptions( 'debug_sql' );
 
         $sql = $this->getSelectSql();
         $binds = $this->getBind();
@@ -245,21 +270,42 @@ trait Orm
         if ( $fetch_sql === true ) { //返回构建的SQL语句
             return $this->getConn()->getRealSql( $sql, $binds );
         }
+        if ( $debug_sql === true ) {
+            return [
+                'sql' => $sql,
+                'binds' => $binds,
+                'result_sql' => $this->getConn()->getRealSql( $sql, $binds )
+            ];
+        }
 
         $res = $this->getConn()->fetchAssocObject( $sql, $binds, $master );
         return $res;
     }
 
 
+    /**
+     * 查询一个字段
+     * @param int $column
+     * @param bool $master
+     * @return mixed|array
+     */
     public function findColumn( int $column = 0, bool $master = false )
     {
         $fetch_sql = $this->getOptions( 'fetch_sql' );
+        $debug_sql = $this->getOptions( 'debug_sql' );
 
         $sql = $this->getSelectSql();
         $binds = $this->getBind();
 
         if ( $fetch_sql === true ) { //返回构建的SQL语句
             return $this->getConn()->getRealSql( $sql, $binds );
+        }
+        if ( $debug_sql === true ) {
+            return [
+                'sql' => $sql,
+                'binds' => $binds,
+                'result_sql' => $this->getConn()->getRealSql( $sql, $binds )
+            ];
         }
 
         $res = $this->getConn()->fetchColumn( $sql, $binds, $column, $master );
@@ -301,17 +347,25 @@ trait Orm
      * @param array $criteria
      * @param array|null $orderBy
      *
-     * @return object|null The entity instance or NULL if the entity can not be found.
+     * @return object|null|array The entity instance or NULL if the entity can not be found.
      */
     public function findOne( bool $master = false )
     {
         $fetch_sql = $this->getOptions( 'fetch_sql' );
+        $debug_sql = $this->getOptions( 'debug_sql' );
 
         $sql = $this->getSelectSql();
         $binds = $this->getBind();
 
         if ( $fetch_sql === true ) { //返回构建的SQL语句
             return $this->getConn()->getRealSql( $sql, $binds );
+        }
+        if ( $debug_sql === true ) {
+            return [
+                'sql' => $sql,
+                'binds' => $binds,
+                'result_sql' => $this->getConn()->getRealSql( $sql, $binds )
+            ];
         }
         $res = $this->getConn()->fetchAssocObject( $sql, $binds, $master );
         return $res;
@@ -322,18 +376,26 @@ trait Orm
      * @param string $sql
      * @param array $bind
      * @param bool $master
-     * @return mixed
+     * @return mixed|array
      */
     public function findBySql( string $sql, array $bind = [], bool $master = false )
     {
         $this->whereRaw( $sql, $bind );
         $fetch_sql = $this->getOptions( 'fetch_sql' );
+        $debug_sql = $this->getOptions( 'debug_sql' );
 
         $sql = $this->getSelectSql();
         $binds = $this->getBind();
 
         if ( $fetch_sql === true ) { //返回构建的SQL语句
             return $this->getConn()->getRealSql( $sql, $binds );
+        }
+        if ( $debug_sql === true ) {
+            return [
+                'sql' => $sql,
+                'binds' => $binds,
+                'result_sql' => $this->getConn()->getRealSql( $sql, $binds )
+            ];
         }
         $res = $this->getConn()->fetchAllObject( $sql, $binds, $master );
         return $res;
@@ -345,7 +407,7 @@ trait Orm
      * @access public
      * @param string $field 字段名
      * @param mixed $default 默认值
-     * @return string
+     * @return string|array
      */
     public function value( string $field, $default = null )
     {
@@ -354,12 +416,20 @@ trait Orm
             $this->options[ 'field' ] = $field;
         }
         $fetch_sql = $this->getOptions( 'fetch_sql' );
+        $debug_sql = $this->getOptions( 'debug_sql' );
 
         $sql = $this->getSelectSql();
         $binds = $this->getBind();
 
         if ( $fetch_sql === true ) { //返回构建的SQL语句
             return $this->getConn()->getRealSql( $sql, $binds );
+        }
+        if ( $debug_sql === true ) {
+            return [
+                'sql' => $sql,
+                'binds' => $binds,
+                'result_sql' => $this->getConn()->getRealSql( $sql, $binds )
+            ];
         }
 
         $result = $this->getConn()->fetchColumn( $sql, $binds );
