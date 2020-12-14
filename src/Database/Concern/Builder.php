@@ -120,7 +120,7 @@ trait Builder
      */
     protected function parseClosureWhere( QueryBuilderDatabase $query, Closure $value )
     {
-        //作用一：子查询时bindValue的字段key值最后增加mr_rand方法，防止重名，只限只查询时使用
+        //作用一：子查询时bindValue的字段key值最后增加mr_rand方法，防止重名，只限子查询时使用
         //作用二：和alias一起 用来判断在绑定字段key别名的时候，是否从aliasMap中取schema
         $query->subQuery = true;
         //如果表实体类进行了join联表查询操作，这里在join后进行子查询的时候。会把join时设置的aliasMap schema的映射关系带入到 子查询闭包的查询类中。这样可以得到正确a. b.等Field的schema
@@ -576,7 +576,7 @@ trait Builder
         $bind_name_key = $key;
         if ( ( !empty( $this->getOptions( 'join' ) ) || $this->subQueryAlias === true ) && strpos( $key, '.' ) !== false ) {
             //条件一：join配置存在 并且 字段中存在.的。说明是join方法的
-            //条件二：如果是子查询并且设置了alias别名，且字段key中有联合查询的关键字. 就从aliasMap 别名schema中查询真实的字段名。
+            //条件二：如果是子查询（$this->subQueryAlias===true)并且设置了alias别名，且字段key中有联合查询的关键字. 就从aliasMap 别名schema中查询真实的字段名。
             //parse_key return ['a', 'is_delete']
             $parse_key = explode( '.', $key );
 
