@@ -67,9 +67,9 @@ class MysqlConnector extends PDOConnection
             $conditionBuilders[ 'where' ],
             $conditionBuilders[ 'group' ],
             $conditionBuilders[ 'having' ],
+            $conditionBuilders[ 'union' ],
             $conditionBuilders[ 'order' ],
             $conditionBuilders[ 'limit' ],
-            $conditionBuilders[ 'union' ],
             $conditionBuilders[ 'lock' ],
             $conditionBuilders[ 'force' ]
         ];

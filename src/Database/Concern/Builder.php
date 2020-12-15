@@ -24,9 +24,9 @@ trait Builder
         $this->conditionBuilders[ 'where' ] = $this->buildWhere( $options[ 'where' ] );
         $this->conditionBuilders[ 'group' ] = $this->buildGroupBy( $options[ 'group' ] );
         $this->conditionBuilders[ 'having' ] = $this->buildHaving( $options[ 'having' ] );
+        $this->conditionBuilders[ 'union' ] = $this->buildUnion( $options[ 'union' ] );
         $this->conditionBuilders[ 'order' ] = $this->buildOrderBy( $options[ 'order' ] );
         $this->conditionBuilders[ 'limit' ] = $this->buildLimit( $options[ 'limit' ] );
-        $this->conditionBuilders[ 'union' ] = $this->buildUnion( $options[ 'union' ] );
         $this->conditionBuilders[ 'lock' ] = $this->buildLock( $options[ 'lock' ] );
         $this->conditionBuilders[ 'force' ] = $this->buildForce( $options[ 'force' ] );
 
