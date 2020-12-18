@@ -165,12 +165,12 @@ class Functions
 
     /**
      * curl取文件
-     * @param type $url
-     * @param type $timeout
-     * @param type $ssl
-     * @return type
+     * @param $url
+     * @param int $timeout
+     * @param false $ssl
+     * @return bool|string
      */
-    public function curl_file_get_contents( $url, $timeout = 5, $ssl = false )
+    public function curl_file_get_contents( string $url, int $timeout = 5, bool $ssl = false )
     {
         $ch = curl_init();
         curl_setopt( $ch, CURLOPT_URL, $url );
