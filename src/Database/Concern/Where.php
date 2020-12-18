@@ -117,6 +117,17 @@ trait Where
     }
 
     /**
+     * 通过设置主键筛选条件
+     * 一般用在update delete select.find($id)
+     * @param $id
+     * @return $this|QueryBuilderDatabase
+     */
+    public function wherePk( $id )
+    {
+        return $this->where( $this->getPrimaryKey(), $id );
+    }
+
+    /**
      * 设置where条件
      * @param $column
      * @param null $operator

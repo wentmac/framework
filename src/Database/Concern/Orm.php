@@ -259,7 +259,7 @@ trait Orm
         if ( empty( $id ) ) {
             throw new DbException( 'method find must need params:id' );
         }
-        $this->where( $this->getPrimaryKey(), $id );
+        $this->wherePk( $id );
 
         $fetch_sql = $this->getOptions( 'fetch_sql' );
         $debug_sql = $this->getOptions( 'debug_sql' );
