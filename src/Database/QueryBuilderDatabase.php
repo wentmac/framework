@@ -208,7 +208,7 @@ class QueryBuilderDatabase
             }
         }
 
-        foreach ( [ 'master', 'lock', 'fetch_sql', 'debug_sql', 'distinct', 'procedure' ] as $name ) {
+        foreach ( [ 'master', 'lock', 'fetch_sql', 'debug_sql', 'distinct', 'procedure', 'replace' ] as $name ) {
             if ( !isset( $options[ $name ] ) ) {
                 $options[ $name ] = false;
             }
