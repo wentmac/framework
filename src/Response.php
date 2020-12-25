@@ -308,6 +308,19 @@ class Response
     }
 
     /**
+     * xml 结构 return
+     * @param $xml
+     * @return bool
+     * @throws TmacException
+     */
+    public function xmlReturn( $xml )
+    {
+        $this->setHeader( 'Content-type', 'application/xml; charset=utf-8' );
+        $this->setContent( $xml );
+        return $this->send();
+    }
+
+    /**
      * @return bool whether this response has a valid [[statusCode]].
      */
     private function getIsInvalid()
