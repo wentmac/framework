@@ -109,9 +109,8 @@ class Log
 
     /**
      * 写日志
-     * @param type $level
-     * @param type $message
-     * @return boolean
+     * @param $message
+     * @return bool
      */
     public function write( $message )
     {
