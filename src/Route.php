@@ -43,10 +43,10 @@ class Route
     public function init()
     {
         $this->parsePath();
-        $_GET = array_merge($_GET, $this->param);
+        $_GET = array_merge( $_GET, $this->param );
         $this->initControllerMethod( $this->initController() );
     }
-    
+
     /**
      * 解析URL路径
      *
@@ -54,7 +54,7 @@ class Route
      * @access private
      *
      */
-    private function parsePath()
+    private function parsePath(): void
     {
         if ( $this->config[ 'app.url_case_insensitive' ] ) {
             // URL地址中M不区分大小写
@@ -68,7 +68,7 @@ class Route
             $this->param[ 'TMAC_CONTROLLER' ] = '';
             $this->param[ 'TMAC_CONTROLLER_NAME' ] = 'index';
             $this->param[ 'TMAC_ACTION' ] = 'index';
-            return true;
+            return;
         }
         $queryString = $_GET[ 'm' ];
         unset( $_GET[ 'm' ] );
@@ -101,7 +101,6 @@ class Route
         $this->param[ 'TMAC_CONTROLLER_FILE' ] = $tmac_controller_file;
         $this->param[ 'TMAC_CONTROLLER_NAME' ] = $tmac_controller;
         $this->param[ 'TMAC_ACTION' ] = $action;
-        return true;
     }
 
     /**
@@ -120,7 +119,7 @@ class Route
     /**
      * 根据解析的URL获取Controller文件
      *
-     * @return void
+     * @return object
      * @access private
      *
      */
@@ -202,7 +201,7 @@ class Route
      */
     private function isLetter( $char )
     {
-        $ascii = ord( $char[0] );
+        $ascii = ord( $char[ 0 ] );
         return ( $ascii >= 65 && $ascii <= 90 ) || ( $ascii >= 97 && $ascii <= 122 );
     }
 
