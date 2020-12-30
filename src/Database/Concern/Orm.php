@@ -53,6 +53,10 @@ trait Orm
             $set[] = $key . '=' . $this->parseBuilderDataBind( $key, $value );
         }
         $this->options[ 'data' ] = $set;
+        //判断是否有设置where条件,这里为了防止把整个数据表给全部更新了的误操作,对没有设置where条件的语句不让执行更新sql语句.
+        if ( empty( $this->getOptions( 'where' ) ) ) {
+            throw new DbException( 'update the table ' . $this->getOptions( 'table' ) . ', but the where condition is not set' );
+        }
 
         $fetch_sql = $this->getOptions( 'fetch_sql' );
         $debug_sql = $this->getOptions( 'debug_sql' );
@@ -213,6 +217,10 @@ trait Orm
      */
     public function delete()
     {
+        //判断是否有设置where条件,这里为了防止把整个数据表给全部删除了的误操作,对没有设置where条件的语句不让执行删除sql语句.
+        if ( empty( $this->getOptions( 'where' ) ) ) {
+            throw new DbException( 'delete the table ' . $this->getOptions( 'table' ) . ', but the where condition is not set' );
+        }
         $fetch_sql = $this->getOptions( 'fetch_sql' );
         $debug_sql = $this->getOptions( 'debug_sql' );
 
