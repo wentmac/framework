@@ -142,7 +142,7 @@ trait Builder
             $whereClosure = $query->getSelectSql();
         }
         $this->bind( $query->getBind( false ) );
-        $where = '( ' . $whereClosure . ' )';
+        $where = '(' . $whereClosure . ' )';
         return $where ?? '';
     }
 
