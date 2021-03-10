@@ -129,8 +129,9 @@ trait Builder
         if ( !empty( $this->getOptions( 'alias' ) ) ) {
             $query->subQueryAlias = true;
         }
-        //$query->options['join'] = $this->getOptions('join');
-        //$query->options['alias'] = $this->getOptions('alias');
+        // join、alias的重新赋值传递到子查询匿名方法，传递到嵌套匿名方法子查询中。
+        $query->options['join'] = $this->getOptions('join');
+        $query->options['alias'] = $this->getOptions('alias');
         $value( $query );
         //print_r( $query->options );
         //$whereClosure = $this->parseWhere( $query->getOptions( 'where' ) ? : [] );

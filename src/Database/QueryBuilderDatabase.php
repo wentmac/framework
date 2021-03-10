@@ -1,6 +1,7 @@
 <?php
 /**
- *
+ * DB ORM Driver Builder
+ * 数据库ORM驱动程序生成器
  * ============================================================================
  * Author: zhangwentao <wentmac@vip.qq.com>
  * Date: 2020/6/22 0:08
@@ -85,6 +86,11 @@ class QueryBuilderDatabase
 
     /**
      * 初始化
+     * QueryBuilderDatabase constructor.
+     * @param DriverDatabase $connection db driver 数据库驱动
+     * @param $table 数据表名
+     * @param $schema 数据库字段的组织和结构 字段的数据类型
+     * @param $primaryKey 数据表的主键id
      */
     public function __construct( DriverDatabase $connection, $table, $schema, $primaryKey )
     {
@@ -102,7 +108,27 @@ class QueryBuilderDatabase
      */
     public function newQuery(): QueryBuilderDatabase
     {
-        return new static( $this->driverDatabase, $this->table, $this->schema, $this->primaryKey );
+        /*
+            // AND ( ( a.s_date >= 1615996800 AND a.s_date <= 1616083200 ) OR ( a.e_date >= 1615996800 AND a.e_date <= 1616083200 ) )
+            $this->ArticleRepository->andWhere( function ( $query ) use ( $start_date ) {
+                $start_date_time = strtotime( $start_date );
+                $end_date_time = $start_date_time + 86400;
+                $query->where( function ( $query ) use ( $start_date_time, $end_date_time ) {
+                    $query->where( 'a.s_date', '>=', $start_date_time )
+                        ->andWhere( 'a.s_date', '<', $end_date_time );
+                } )
+                    ->orWhere( function ( $query ) use ( $start_date_time, $end_date_time ) {
+                        $query->where( 'a.e_date', '>=', $start_date_time )
+                            ->andWhere( 'a.e_date', '<', $end_date_time );
+                    } );
+            } );
+
+            修正 SQL子查询的匿名函数的多层嵌套调用时，把subQueryAlias状态传递到嵌套匿名方法中，用来判断联合查询是带"."的pdo查询bindName替换。
+         */
+        $static = new static( $this->driverDatabase, $this->table, $this->schema, $this->primaryKey );
+        // 在这里取消注释 或者 在Builder.php的parseClosureWhere方法中使用join、alias的重新赋值传递，都可实现
+        // $static->subQueryAlias = $this->subQueryAlias;
+        return $static;
     }
 
     /**
