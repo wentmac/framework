@@ -161,6 +161,7 @@ class Response
             'STATIC_URL' => $this->config[ 'app.static_url' ],
             'STATIC_COMMON_URL' => $this->config[ 'app.static_url' ] . 'common/',
             'STATIC_APP_URL' => $this->config[ 'app.static_url' ] . APP_NAME . '/' . $this->config[ 'app.template.template_style' ] . '/',
+            'STATIC_VERSION' => $this->config[ 'app.static_version' ]
         ];
     }
 
