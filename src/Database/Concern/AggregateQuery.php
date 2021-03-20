@@ -62,11 +62,12 @@ trait AggregateQuery
      * SUM查询
      * @access public
      * @param string|Raw $field 字段名
-     * @return float
+     * @param bool $force 强制转为数字类型
+     * @return mixed
      */
-    public function sum( $field ): float
+    public function sum( $field, bool $force = true )
     {
-        return $this->aggregate( 'SUM', $field, true );
+        return $this->aggregate( 'SUM', $field, $force );
     }
 
     /**
@@ -97,11 +98,12 @@ trait AggregateQuery
      * AVG查询
      * @access public
      * @param string|Raw $field 字段名
-     * @return float
+     * @param bool $force 强制转为数字类型
+     * @return mixed
      */
-    public function avg( $field ): float
+    public function avg( $field, bool $force = true )
     {
-        return $this->aggregate( 'AVG', $field, true );
+        return $this->aggregate( 'AVG', $field, $force );
     }
 
 }
