@@ -40,9 +40,10 @@ trait AggregateQuery
      *
      * @access public
      * @param string|Raw $field 字段名
-     * @return int
+     * @param bool $force 强制转为数字类型
+     * @return mixed
      */
-    public function count( string $field = '*' ): int
+    public function count( string $field = '*', bool $force = true )
     {
         $where = $this->getOptions( 'where' );
         //if group
@@ -51,7 +52,7 @@ trait AggregateQuery
             $this->removeOption( 'group' );
             $count = $this->value( $field, 0 );
         } else {
-            $count = $this->aggregate( 'COUNT', $field );
+            $count = $this->aggregate( 'COUNT', $field, $force );
         }
         //这里count因为后续会有可能接着查询数据，可以复用where条件
         $this->options[ 'where' ] = $where;
