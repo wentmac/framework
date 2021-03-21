@@ -298,7 +298,18 @@ class QueryBuilderDatabase
         $this->aliasMap[ $this_alias ] = $this->getSchema();
 
         $this->options[ 'join' ][] = [ $table[ 'table' ] . ' ' . $table[ 'alias' ], strtoupper( $type ), $condition ];
+        /*
+            $ticket_number = $order_pw_repo->alias( 'a' )->join( $order_repo->alias( 'b' ), 'a.orderid=b.id' )
+            ->where( 'a.uid', $uid )
+            ->andWhere( 'a.ticketid', $ticket_id )
+            ->andWhere( 'b.ispay', 'ok' )
+            ->sum( 'a.ticketnum', true );
 
+            // 去掉$order_repo 的alias的options
+            $order_repo->find(1);
+         */
+        // 去掉join的repository中的options的alias参数，防止影响后面的sql
+        $repository->removeOption();
         return $this;
     }
 
