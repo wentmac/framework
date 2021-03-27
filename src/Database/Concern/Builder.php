@@ -130,8 +130,8 @@ trait Builder
             $query->subQueryAlias = true;
         }
         // join、alias的重新赋值传递到子查询匿名方法，传递到嵌套匿名方法子查询中。
-        $query->options['join'] = $this->getOptions('join');
-        $query->options['alias'] = $this->getOptions('alias');
+        // $query->options['join'] = $this->getOptions('join');
+        // $query->options['alias'] = $this->getOptions('alias');
         $value( $query );
         //print_r( $query->options );
         //$whereClosure = $this->parseWhere( $query->getOptions( 'where' ) ? : [] );
@@ -575,6 +575,7 @@ trait Builder
         $schema = $this->schema;
         $schema_key = $key;
         $bind_name_key = $key;
+        // 这里使用 !empty( $this->getOptions( 'alias' ) 也是可以的
         if ( ( !empty( $this->getOptions( 'join' ) ) || $this->subQueryAlias === true ) && strpos( $key, '.' ) !== false ) {
             //条件一：join配置存在 并且 字段中存在.的。说明是join方法的
             //条件二：如果是子查询（$this->subQueryAlias===true)并且设置了alias别名，且字段key中有联合查询的关键字. 就从aliasMap 别名schema中查询真实的字段名。

@@ -127,7 +127,7 @@ class QueryBuilderDatabase
          */
         $static = new static( $this->driverDatabase, $this->table, $this->schema, $this->primaryKey );
         // 在这里取消注释 或者 在Builder.php的parseClosureWhere方法中使用join、alias的重新赋值传递，都可实现
-        // $static->subQueryAlias = $this->subQueryAlias;
+        $static->subQueryAlias = $this->subQueryAlias;
         return $static;
     }
 
