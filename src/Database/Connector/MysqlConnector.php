@@ -63,6 +63,7 @@ class MysqlConnector extends PDOConnection
         $clauses = [
             $conditionBuilders[ 'select' ],
             $conditionBuilders[ 'from' ],
+            $conditionBuilders[ 'force' ],
             $conditionBuilders[ 'join' ],
             $conditionBuilders[ 'where' ],
             $conditionBuilders[ 'group' ],
@@ -70,8 +71,7 @@ class MysqlConnector extends PDOConnection
             $conditionBuilders[ 'union' ],
             $conditionBuilders[ 'order' ],
             $conditionBuilders[ 'limit' ],
-            $conditionBuilders[ 'lock' ],
-            $conditionBuilders[ 'force' ]
+            $conditionBuilders[ 'lock' ]
         ];
         $sql = implode( $this->separator, array_filter( $clauses ) );
         return $sql;

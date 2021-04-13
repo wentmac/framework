@@ -20,6 +20,7 @@ trait Builder
         $options = $this->parseOptions();
         $this->conditionBuilders[ 'select' ] = $this->buildSelect( $options[ 'field' ], $options[ 'distinct' ] );
         $this->conditionBuilders[ 'from' ] = $this->buildFrom( $options[ 'table' ] );
+        $this->conditionBuilders[ 'force' ] = $this->buildForce( $options[ 'force' ] );
         $this->conditionBuilders[ 'join' ] = $this->buildJoin( $options[ 'join' ] );
         $this->conditionBuilders[ 'where' ] = $this->buildWhere( $options[ 'where' ] );
         $this->conditionBuilders[ 'group' ] = $this->buildGroupBy( $options[ 'group' ] );
@@ -28,7 +29,6 @@ trait Builder
         $this->conditionBuilders[ 'order' ] = $this->buildOrderBy( $options[ 'order' ] );
         $this->conditionBuilders[ 'limit' ] = $this->buildLimit( $options[ 'limit' ] );
         $this->conditionBuilders[ 'lock' ] = $this->buildLock( $options[ 'lock' ] );
-        $this->conditionBuilders[ 'force' ] = $this->buildForce( $options[ 'force' ] );
 
         $sql = $this->getConn()->buildSelectSql( $this->conditionBuilders );
         $this->removeOption();
