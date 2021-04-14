@@ -285,21 +285,25 @@ trait Builder
             $index = join( ',', $index );
         }
 
-        return sprintf( "FORCE INDEX ( %s ) ", $index );
+        return sprintf( "FORCE INDEX ( %s )", $index );
     }
 
 
     /**
      * 设置锁机制
+     *
+     *     ->lock(true)
+     *     ->lock('lock in share mode')
+     *
      * @access protected
      * @param Query $query 查询对象
-     * @param bool|string $lock
+     * @param bool|string $lock　
      * @return string
      */
     protected function buildLock( $lock = false ): string
     {
         if ( is_bool( $lock ) ) {
-            return $lock ? 'FOR UPDATE ' : '';
+            return $lock ? 'FOR UPDATE' : '';
         }
 
         if ( is_string( $lock ) && !empty( $lock ) ) {
