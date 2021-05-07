@@ -130,7 +130,7 @@ class Response
     /**
      * @return mixed
      */
-    public function getAppPhpSelf()
+    public function getAppPHPSelf()
     {
         return $this->app_php_self;
     }
