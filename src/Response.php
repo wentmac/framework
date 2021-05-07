@@ -23,7 +23,11 @@ class Response
     protected $cookie;
     protected $request;
 
-    //自定义模板风格
+
+    // URL 根目录php文件
+    protected $app_php_self;
+
+    // 自定义模板风格
     protected $template_style = '';
 
     /**
@@ -122,12 +126,23 @@ class Response
      */
     public $content;
 
+
+    /**
+     * @return mixed
+     */
+    public function getAppPhpSelf()
+    {
+        return $this->app_php_self;
+    }
+
+
     public function __construct( ConfigInterface $config, App $app, Request $request, Cookie $cookie )
     {
         $this->config = $config;
         $this->app = $app;
         $this->request = $request;
         $this->cookie = $cookie;
+        $this->app_php_self = basename( $request->getServer( 'SCRIPT_NAME' ) );
     }
 
     /**
@@ -157,7 +172,7 @@ class Response
         return $array = [
             'action' => $this->request->getQuery( 'TMAC_ACTION' ),
             'APP_HOST_URL' => $this->config[ 'app.app_host' ],
-            'APP_PHP_SELF' => basename( $this->request->getServer( 'SCRIPT_NAME' ) ),
+            'APP_PHP_SELF' => $this->$this->app_php_self,
             'STATIC_URL' => $this->config[ 'app.static_url' ],
             'STATIC_COMMON_URL' => $this->config[ 'app.static_url' ] . 'common/',
             'STATIC_APP_URL' => $this->config[ 'app.static_url' ] . APP_NAME . '/' . $this->config[ 'app.template.template_style' ] . '/',
