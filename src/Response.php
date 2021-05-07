@@ -174,8 +174,8 @@ class Response
             'APP_HOST_URL' => $this->config[ 'app.app_host' ],
             'APP_PHP_SELF' => $this->app_php_self,
             'STATIC_URL' => $this->config[ 'app.static_url' ],
-            'STATIC_COMMON_URL' => $this->config[ 'app.static_url' ] . 'common/',
-            'STATIC_APP_URL' => $this->config[ 'app.static_url' ] . APP_NAME . '/' . $this->config[ 'app.template.template_style' ] . '/',
+            'STATIC_COMMON_URL' => $this->config[ 'app.static_url' ] . '/common/',
+            'STATIC_APP_URL' => $this->config[ 'app.static_url' ] . '/' . APP_NAME . '/' . $this->config[ 'app.template.template_style' ] . '/',
             'STATIC_VERSION' => $this->config[ 'app.static_version' ]
         ];
     }
