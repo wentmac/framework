@@ -97,6 +97,22 @@ class Route
             $tmac_controller_file = $this->getControllerFilePath( $controller );
         }
 
+        // Action的分隔符  index.php?m=system.permission-save 默认使用中线：- 推荐使用下划线或中线，目的是为了把action（Controller中的method)转成驼峰写法
+        if ( !empty( $this->config[ 'app.url_action_separator' ] ) ) {
+            // 如果配置了Action分隔符
+            /*
+             index.php?m=system.permission-save
+            to
+             system/permission/save (permissionSaveAction)
+             */
+            if ( ( $transform = strrpos( $action, $this->config[ 'app.url_action_separator' ] ) ) > 0 ) {//如果query_string中有url separator就来取controller和method
+                // 只前只考虑一个分隔符的情况（性能考虑及使用场景上不会有太多的分隔符同时使用）
+                $action_separator_start = substr( $action, 0, $transform );
+                $action_separator_end = ucwords(substr( $action, $transform + 1 ));
+                $action = $action_separator_start.$action_separator_end;
+            }
+        }
+
         $this->param[ 'TMAC_CONTROLLER' ] = ucfirst( $tmac_controller ) . 'Controller';
         $this->param[ 'TMAC_CONTROLLER_FILE' ] = $tmac_controller_file;
         $this->param[ 'TMAC_CONTROLLER_NAME' ] = $tmac_controller;
