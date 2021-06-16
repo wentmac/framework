@@ -225,19 +225,36 @@ class Filter
         if ( $this->requiredField !== true ) {
             return $this->requiredField;
         }
+        if ( !preg_match( '/^[a-zA-Z0-9_-]{4,20}$/', $this->field ) ) {
+            $this->setErrorMessage( '用户名格式：4到20位（字母，数字，下划线，减号）' );
+            return false;
+        }
+        return $this->field;
+    }
+
+    /**
+     * 验证用户用户名是否正确
+     * $username = Input::get('email')->required('用户名不能为空')->username();
+     * @return type
+     */
+    public function nickname()
+    {
+        if ( $this->requiredField !== true ) {
+            return $this->requiredField;
+        }
         $username_len = mb_strwidth( $this->field, 'UTF8' );
         //验证用户所填写的信息是否正确
         if ( $username_len < 4 ) {
-            $this->setErrorMessage( '请输入4个字母或2个汉字以上的用户名' );
+            $this->setErrorMessage( '请输入4个字母或2个汉字以上的昵称' );
             return false;
         } elseif ( $username_len > 20 ) {
-            $this->setErrorMessage( '用户名不能超过20个字母或10个汉字' );
+            $this->setErrorMessage( '昵称不能超过20个字母或10个汉字' );
             return false;
         } elseif ( !preg_match( '/^[\x{4e00}-\x{9fa5}\w-]+$/u', $this->field ) ) {
-            $this->setErrorMessage( '用户名只能使用字母数字下划线' );
+            $this->setErrorMessage( '昵称只能使用字母数字下划线' );
             return false;
         } elseif ( preg_match( '/^1([3]|[5]|[8])[0-9]{9}$/', $this->field ) ) {
-            $this->setErrorMessage( '用户名请使用非手机号码的格式' );
+            $this->setErrorMessage( '昵称请使用非手机号码的格式' );
             return false;
         }
         return $this->field;
@@ -266,8 +283,8 @@ class Filter
         } elseif ( $password_len < 6 ) {
             $this->setErrorMessage( '密码太短了，最少6位。' );
             return false;
-        } elseif ( $password_len > 16 ) {
-            $this->setErrorMessage( '密码太长了，最多16位。' );
+        } elseif ( $password_len > 20 ) {
+            $this->setErrorMessage( '密码太长了，最多20位。' );
             return false;
         }
         return $this->field;
