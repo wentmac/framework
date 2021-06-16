@@ -152,6 +152,23 @@ class Filter
         return floatval( $this->field );
     }
 
+
+    /**
+     * @return
+     */
+    public function number( $error_message = '' )
+    {
+        if ( $this->requiredField !== true ) {
+            return $this->requiredField;
+        }
+        if ( !is_numeric( $this->field ) ) {
+            $message = empty( $error_message ) ? '非数字格式' : $error_message;
+            $this->setErrorMessage( $message );
+            return false;
+        }
+        return $this->field;
+    }
+
     /**
      * 过滤掉参数中的html标签
      * $room_id = Input::get('room_title')->required('房屋标题不能为空')->string();
@@ -540,14 +557,26 @@ class Filter
      * 返回数组格式
      * @return array|bool
      */
-    public function getArray()
+    public function getArray( $error_message = '' )
     {
         if ( $this->requiredField !== true ) {
             return $this->requiredField;
         }
         if ( !is_array( $this->field ) ) {
-            $this->setErrorMessage( '非array格式' );
+            $message = empty( $error_message ) ? '非数组格式' : $error_message;
+            $this->setErrorMessage( $message );
             return false;
+        }
+        return $this->field;
+    }
+
+    /**
+     * @return
+     */
+    public function getValue()
+    {
+        if ( $this->requiredField !== true ) {
+            return $this->requiredField;
         }
         return $this->field;
     }
