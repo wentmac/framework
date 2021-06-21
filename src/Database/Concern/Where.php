@@ -128,6 +128,19 @@ trait Where
     }
 
     /**
+     * where条件初始化
+     * 取消原来->where条件中的初始化　
+     * 这样->where和->andWhere是一样的了
+     * 如果有需要where初始化的就使用此方法
+     * @return $this
+     */
+    public function whereInit(): self
+    {
+        $this->options[ 'where' ] = [];//初始化where数组
+        return $this;
+    }
+
+    /**
      * 设置where条件
      * @param $column
      * @param null $operator
@@ -139,7 +152,6 @@ trait Where
         [ $value, $operator ] = $this->prepareValueAndOperator(
             $value, $operator, func_num_args() === 2
         );
-        $this->options[ 'where' ] = [];//初始化where数组
         return $this->parseWhereExp( $column, $operator, $value );
     }
 
@@ -153,10 +165,7 @@ trait Where
      */
     public function andWhere( $column, $operator = null, $value = null )
     {
-        [ $value, $operator ] = $this->prepareValueAndOperator(
-            $value, $operator, func_num_args() === 2
-        );
-        return $this->parseWhereExp( $column, $operator, $value );
+        return $this->where( $column, $operator, $value );
     }
 
     /**
