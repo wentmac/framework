@@ -165,7 +165,10 @@ trait Where
      */
     public function andWhere( $column, $operator = null, $value = null )
     {
-        return $this->where( $column, $operator, $value );
+        [ $value, $operator ] = $this->prepareValueAndOperator(
+            $value, $operator, func_num_args() === 2
+        );
+        return $this->parseWhereExp( $column, $operator, $value );
     }
 
     /**
