@@ -127,13 +127,15 @@ class Filter
      * @return type
      * @author zhangwentao
      */
-    public function bigint()
+    public function bigint($error_message = '')
     {
         if ( $this->requiredField !== true ) {
             return $this->requiredField;
         }
         if ( !preg_match( '/^(\d+)$/', $this->field ) ) {
-            return intval( $this->field );
+            $message = empty( $error_message ) ? '数字格式不正确' : $error_message;
+            $this->setErrorMessage( $message );
+            return false;
         }
         return $this->field;
     }
