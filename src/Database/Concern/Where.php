@@ -241,7 +241,7 @@ trait Where
      * @param null $value
      * @return $this
      */
-    public function orwhereIn( $column, $value = null )
+    public function orWhereIn( $column, $value = null )
     {
         return $this->orWhere( $column, 'IN', $value );
     }
