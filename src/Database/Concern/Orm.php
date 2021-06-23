@@ -260,9 +260,10 @@ trait Orm
      * Finds an entity by its primary key / identifier.
      *
      * @param mixed $id The identifier.
+     * @param bool $fetch_obj 如果传false返回array
      * @return object|null|array The entity instance or NULL if the entity can not be found.
      */
-    public function find( $id, bool $master = false )
+    public function find( $id, bool $fetch_obj = true, bool $master = false )
     {
         if ( empty( $id ) ) {
             throw new DbException( 'method find must need params:id' );
@@ -286,7 +287,11 @@ trait Orm
             ];
         }
 
-        $res = $this->getConn()->fetchAssocObject( $sql, $binds, $master );
+        if ( $fetch_obj ) {
+            $res = $this->getConn()->fetchAssocObject( $sql, $binds, $master );
+        } else {
+            $res = $this->getConn()->fetchAssoc( $sql, $binds, $master );
+        }
         return $res;
     }
 
@@ -323,9 +328,11 @@ trait Orm
     /**
      * Finds all entities in the repository.
      *
-     * @return array The entities.
+     * @param bool $fetch_obj 如果传false返回array
+     * @param bool $master
+     * @return array |string The entities.
      */
-    public function findAll( bool $master = false )
+    public function findAll( bool $fetch_obj = true, bool $master = false )
     {
         $fetch_sql = $this->getOptions( 'fetch_sql' );
         $debug_sql = $this->getOptions( 'debug_sql' );
@@ -344,20 +351,22 @@ trait Orm
             ];
         }
 
-        $res = $this->getConn()->fetchAllObject( $sql, $binds, $master );
+        if ( $fetch_obj ) {
+            $res = $this->getConn()->fetchAllObject( $sql, $binds, $master );
+        } else {
+            $res = $this->getConn()->fetchAll( $sql, $binds, $master );
+        }
         return $res;
     }
 
 
     /**
      * Finds a single entity by a set of criteria.
-     *
-     * @param array $criteria
-     * @param array|null $orderBy
-     *
-     * @return object|null|array The entity instance or NULL if the entity can not be found.
+     * @param bool $fetch_obj 如果传false返回array
+     * @param bool $master
+     * @return array|mixed|string
      */
-    public function findOne( bool $master = false )
+    public function findOne( bool $fetch_obj = true, bool $master = false )
     {
         $fetch_sql = $this->getOptions( 'fetch_sql' );
         $debug_sql = $this->getOptions( 'debug_sql' );
@@ -375,7 +384,11 @@ trait Orm
                 'result_sql' => $this->getConn()->getRealSql( $sql, $binds )
             ];
         }
-        $res = $this->getConn()->fetchAssocObject( $sql, $binds, $master );
+        if ( $fetch_obj ) {
+            $res = $this->getConn()->fetchAssocObject( $sql, $binds, $master );
+        } else {
+            $res = $this->getConn()->fetchAssoc( $sql, $binds, $master );
+        }
         return $res;
     }
 
@@ -383,10 +396,11 @@ trait Orm
     /**
      * @param string $sql
      * @param array $bind
+     * @param bool $fetch_obj 如果传false返回array
      * @param bool $master
-     * @return mixed|array
+     * @return array|string
      */
-    public function findBySql( string $sql, array $bind = [], bool $master = false )
+    public function findBySql( string $sql, array $bind = [], bool $fetch_obj = true, bool $master = false )
     {
         $this->whereRaw( $sql, $bind );
         $fetch_sql = $this->getOptions( 'fetch_sql' );
@@ -405,7 +419,11 @@ trait Orm
                 'result_sql' => $this->getConn()->getRealSql( $sql, $binds )
             ];
         }
-        $res = $this->getConn()->fetchAllObject( $sql, $binds, $master );
+        if ( $fetch_obj ) {
+            $res = $this->getConn()->fetchAllObject( $sql, $binds, $master );
+        } else {
+            $res = $this->getConn()->fetchAll( $sql, $binds, $master );
+        }
         return $res;
     }
 
