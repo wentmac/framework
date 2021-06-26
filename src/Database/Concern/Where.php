@@ -241,23 +241,10 @@ trait Where
      * @param null $value
      * @return $this
      */
-    public function orwhereIn( $column, $value = null )
+    public function orWhereIn( $column, $value = null )
     {
         return $this->orWhere( $column, 'IN', $value );
     }
-
-    /**
-     * and where IN 方法
-     * @param $column
-     * @param null $operator
-     * @param null $value
-     * @return $this
-     */
-    public function andwhereIn( $column, $value = null )
-    {
-        return $this->andWhere( $column, 'IN', $value );
-    }
-
 
     /**
      * where NOT IN 方法
@@ -281,19 +268,6 @@ trait Where
     public function orWhereNotIn( $column, $value = null )
     {
         return $this->orWhere( $column, 'NOT IN', $value );
-    }
-
-
-    /**
-     * and where NOT IN 方法
-     * @param $column
-     * @param null $operator
-     * @param null $value
-     * @return $this
-     */
-    public function andWhereNotIn( $column, $value = null )
-    {
-        return $this->andWhere( $column, 'NOT IN', $value );
     }
 
     /**
@@ -321,18 +295,6 @@ trait Where
     }
 
     /**
-     * and where LIKE 方法
-     * @param $column
-     * @param null $operator
-     * @param null $value
-     * @return $this
-     */
-    public function andWhereLike( $column, $value = null )
-    {
-        return $this->andWhere( $column, 'LIKE', $value );
-    }
-
-    /**
      * where Between 方法
      * @param $column
      * @param null $operator
@@ -354,18 +316,6 @@ trait Where
     public function orWhereBetween( $column, $value = null )
     {
         return $this->orWhere( $column, 'BETWEEN', $value );
-    }
-
-    /**
-     * or where Between 方法
-     * @param $column
-     * @param null $operator
-     * @param null $value
-     * @return $this
-     */
-    public function andWhereBetween( $column, $value = null )
-    {
-        return $this->andWhere( $column, 'BETWEEN', $value );
     }
 
     /**
@@ -395,21 +345,6 @@ trait Where
         return $this->orWhere( $column, 'NOT BETWEEN', $value );
     }
 
-
-    /**
-     * and 指定NotBetween查询条件
-     * @access public
-     * @param mixed $field 查询字段
-     * @param mixed $condition 查询条件
-     * @param string $logic 查询逻辑 and or xor
-     * @return $this
-     */
-    public function andWhereNotBetween( string $field, $condition, string $logic = 'AND' )
-    {
-        return $this->andWhere( $column, 'NOT BETWEEN', $value );
-    }
-
-
     /**
      * 指定Null查询条件
      * @access public
@@ -419,7 +354,7 @@ trait Where
      */
     public function whereNull( $column )
     {
-        return $this->where( $column, '=', new Raw( 'NULL' ) );
+        return $this->where( $column, 'is', new Raw( 'NULL' ) );
     }
 
     /**
@@ -431,19 +366,7 @@ trait Where
      */
     public function orWhereNull( $column )
     {
-        return $this->orWhere( $column, '=', new Raw( 'NULL' ) );
-    }
-
-    /**
-     * and 指定Null查询条件
-     * @access public
-     * @param mixed $field 查询字段
-     * @param string $logic 查询逻辑 and or xor
-     * @return $this
-     */
-    public function andWhereNull( $column )
-    {
-        return $this->andWhere( $column, 'is', new Raw( 'NULL' ) );
+        return $this->orWhere( $column, 'is', new Raw( 'NULL' ) );
     }
 
     /**
@@ -468,18 +391,6 @@ trait Where
     public function orwhereNotNull( $column )
     {
         return $this->orWhere( $column, 'is', new Raw( 'NOT NULL' ) );
-    }
-
-    /**
-     * and 指定Null查询条件
-     * @access public
-     * @param mixed $field 查询字段
-     * @param string $logic 查询逻辑 and or xor
-     * @return $this
-     */
-    public function andwhereNotNull( $column )
-    {
-        return $this->andWhere( $column, 'is', new Raw( 'NOT NULL' ) );
     }
 
     /**
@@ -508,16 +419,6 @@ trait Where
      * @access public
      * @return $this
      */
-    public function andWhereExists( $value )
-    {
-        return $this->andWhere( '', 'EXISTS', $value );
-    }
-
-    /**
-     * 指定Exists查询条件
-     * @access public
-     * @return $this
-     */
     public function whereNotExists( $value )
     {
         return $this->where( '', 'NOT EXISTS', $value );
@@ -532,16 +433,6 @@ trait Where
     public function orWhereNotExists( $value )
     {
         return $this->orWhere( '', 'NOT EXISTS', $value );
-    }
-
-    /**
-     * 指定Exists查询条件
-     * @access public
-     * @return $this
-     */
-    public function andWhereNotExists( $value )
-    {
-        return $this->andWhere( '', 'NOT EXISTS', $value );
     }
 
     /**
@@ -568,18 +459,5 @@ trait Where
     public function orWhereFindInSet( $column, $value = null )
     {
         return $this->orWhere( $column, 'FIND_IN_SET', $value );
-    }
-
-    /**
-     * 指定FIND_IN_SET查询条件
-     * @access public
-     * @param mixed $field 查询字段
-     * @param mixed $condition 查询条件
-     * @param string $logic 查询逻辑 and or xor
-     * @return $this
-     */
-    public function andWhereFindInSet( $column, $value = null )
-    {
-        return $this->andWhere( $column, 'FIND_IN_SET', $value );
     }
 }
