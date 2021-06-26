@@ -28,7 +28,7 @@ class TmacException extends Exception
      * @param int $code
      * @access public
      */
-    public function __construct( $message = 'Unknown Error', $code = 0 )
+    public function __construct( $message = 'Unknown Error', $code = -1 )
     {
         parent::__construct( $message, $code );
     }
