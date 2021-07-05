@@ -177,12 +177,12 @@ class Filter
      * @return string
      * @author zhangwentao
      */
-    public function string()
+    public function string( bool $usePdo = true )
     {
         if ( $this->requiredField !== true ) {
             return $this->requiredField;
         }
-        $this->sqlInjectionFilter();
+        $usePdo === false && $this->sqlInjectionFilter();
         return htmlspecialchars( $this->field, ENT_QUOTES );
     }
 
@@ -207,12 +207,12 @@ class Filter
      * @access public
      * @return string
      */
-    public function forSearch()
+    public function forSearch( bool $usePdo = true )
     {
         if ( $this->requiredField !== true ) {
             return $this->requiredField;
         }
-        $this->sqlInjectionFilter();
+        $usePdo === false && $this->sqlInjectionFilter();
         return str_replace( array( '%', '_' ), array( '\%', '\_' ), $this->field );
     }
 
@@ -285,13 +285,13 @@ class Filter
      * @param type $password
      * @return type
      */
-    public function password()
+    public function password( bool $usePdo = true )
     {
         if ( $this->requiredField !== true ) {
             return $this->requiredField;
         }
         $password_len = strlen( $this->field );
-        $this->sqlInjectionFilter();
+        $usePdo === false && $this->sqlInjectionFilter();
         //验证密码是否为空
         if ( empty( $this->field ) ) {
             $this->setErrorMessage( '密码不能为空' );
