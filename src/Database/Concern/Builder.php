@@ -142,7 +142,7 @@ trait Builder
         } else {
             $whereClosure = $query->getSelectSql();
         }
-        $this->bind( $query->getBind( false ) );
+        $this->bind( $query->getBind() );
         $where = '(' . $whereClosure . ' )';
         return $where ?? '';
     }
@@ -359,22 +359,6 @@ trait Builder
     }
 
     /**
-     * Compile a "where in" clause.
-     * @param $field
-     * @param $value
-     * @return string
-     */
-    protected function parseWhereIn( $field, $value, $not = false )
-    {
-        $type = $not ? 'NotIn' : 'In';
-        if ( !empty( $value ) ) {
-            return $this->wrap( $where[ 'column' ] ) . ' in (' . $this->parameterize( $where[ 'values' ] ) . ')';
-        }
-
-        return '0 = 1';
-    }
-
-    /**
      * 不同字段使用相同查询条件（AND）
      * @access protected
      * @param array $value 查询条件
@@ -395,6 +379,8 @@ trait Builder
          */
         if ( in_array( $type, [ 'sql', 'raw' ] ) && $value[ 'value' ] instanceof Raw ) {
             $where = " {$logic} " . $value[ 'value' ]->getValue();
+            //重新绑定bindValue参数
+            !empty( $value[ 'bind_params' ] ) && $this->bind( $value[ 'bind_params' ] );
         } elseif ( true === $value[ 'value' ] ) {
             $where = ' ' . $logic . ' 1 ';
         } elseif ( $value[ 'value' ] instanceof Closure ) {

@@ -31,13 +31,23 @@ trait Where
         // If the columns is actually a Closure instance, we will assume the developer
         // wants to begin a nested where statement which is wrapped in parenthesis.
         // We'll add that Closure to the query then return back out immediately.
+
+        /**
+            针对field，Sql同级带括号子查询
+            $this->repo->orWhere( function ( $query ) {
+                $query->where( 'source', 1 )
+                ->where( 'target', 2 );
+            } );
+         */
         if ( $column instanceof Closure ) {
             $subWhereSql = $this->parseClosureWhere( $this->newQuery(), $column );
             if ( $subWhereSql ) {
                 $value = new Raw( $subWhereSql );
                 $type = 'raw';
+                // 括号子查询的bindValue绑定数据
+                $bind_params = $this->getBind();
                 $this->options[ 'where' ][] = compact(
-                    'type', 'value', 'boolean'
+                    'type', 'value', 'boolean', 'bind_params'
                 );
             }
             return $this;

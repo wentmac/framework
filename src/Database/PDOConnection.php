@@ -597,7 +597,7 @@ abstract class PDOConnection implements DatabaseInterface
                 substr_replace( $sql, $value, strpos( $sql, ':' . $key ), strlen( ':' . $key ) );
         }
 
-        return rtrim( $sql );
+        return trim( $sql );
     }
 
 
