@@ -139,11 +139,12 @@ trait Builder
         if ( $query->getTable() == $this->getTable() ) {
             //同一张表使用 的是闭包带括号的复杂查询，不需要在子查询中带select * form table where
             $whereClosure = $query->parseWhere( $query->getOptions( 'where' ) );
+            $where = '(' . $whereClosure . ' )';
         } else {
             $whereClosure = $query->getSelectSql();
+            $where = '( ' . $whereClosure . ' )';
         }
         $this->bind( $query->getBind() );
-        $where = '(' . $whereClosure . ' )';
         return $where ?? '';
     }
 
