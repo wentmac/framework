@@ -380,7 +380,7 @@ trait Builder
         if ( in_array( $type, [ 'sql', 'raw' ] ) && $value[ 'value' ] instanceof Raw ) {
             $where = " {$logic} " . $value[ 'value' ]->getValue();
             //重新绑定bindValue参数
-            !empty( $value[ 'bind_params' ] ) && $this->bind( $value[ 'bind_params' ] );
+            empty( $value[ 'bind_params' ] ) || $this->bind( $value[ 'bind_params' ] );
         } elseif ( true === $value[ 'value' ] ) {
             $where = ' ' . $logic . ' 1 ';
         } elseif ( $value[ 'value' ] instanceof Closure ) {
