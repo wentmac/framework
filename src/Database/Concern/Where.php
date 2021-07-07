@@ -3,6 +3,7 @@ declare ( strict_types=1 );
 
 namespace Tmac\Database\Concern;
 
+use Tmac\Exception\InvalidArgumentException;
 use Tmac\Database\QueryBuilderDatabase;
 use Tmac\Database\Raw;
 use Closure;
@@ -235,11 +236,10 @@ trait Where
     /**
      * where IN 方法
      * @param $column
-     * @param null $operator
      * @param null $value
      * @return $this
      */
-    public function whereIn( $column, $operator = null, $value = null )
+    public function whereIn( $column, $value = null )
     {
         return $this->where( $column, 'IN', $value );
     }
