@@ -57,9 +57,11 @@ class Route
     private function parsePath(): void
     {
         if ( $this->config[ 'app.url_case_insensitive' ] ) {
-            // URL地址中M不区分大小写
-            if ( !empty( $_GET[ 'M' ] ) && empty( $_GET[ 'm' ] ) )
-                $_GET[ 'm' ] = strtolower( $_GET[ 'M' ] );
+            // URL地址中不区分大小写
+            if ( !empty( $_GET[ 'M' ] ) && empty( $_GET[ 'm' ] ) ) {
+                $_GET[ 'm' ] = $_GET[ 'M' ];
+            }
+            $_GET[ 'm' ] = strtolower( $_GET[ 'm' ] );
         }
         //确定Controller以及Action
         if ( empty( $_GET[ 'm' ] ) ) {
