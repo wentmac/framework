@@ -40,7 +40,8 @@ class DriverCache
     }
 
     /**
-     * @return mixed|AbstractCache
+     * @return mixed|FileCache|MemcachedCache|RedisCache
+     * @throws InvalidArgumentException
      * @throws TmacException
      */
     public function createCacheInstance()

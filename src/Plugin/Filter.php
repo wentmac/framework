@@ -69,7 +69,7 @@ class Filter
      * @param type $message
      * @author zhangwentao
      */
-    protected function setErrorMessage( $message )
+    protected function setErrorMessage( string $message )
     {
         $this->errorMessage = $message;
         if ( $this->success === true ) {
@@ -127,7 +127,7 @@ class Filter
      * @return type
      * @author zhangwentao
      */
-    public function bigint($error_message = '')
+    public function bigint( string $error_message = '' )
     {
         if ( $this->requiredField !== true ) {
             return $this->requiredField;
@@ -158,7 +158,7 @@ class Filter
     /**
      * @return
      */
-    public function number( $error_message = '' )
+    public function number( string $error_message = '' )
     {
         if ( $this->requiredField !== true ) {
             return $this->requiredField;
@@ -222,13 +222,14 @@ class Filter
      * @return type
      * @author zhangwentao
      */
-    public function email()
+    public function email( string $error_message = '' )
     {
         if ( $this->requiredField !== true ) {
             return $this->requiredField;
         }
         if ( filter_var( $this->field, FILTER_VALIDATE_EMAIL ) === false ) {
-            $this->setErrorMessage( '邮箱格式不正确' );
+            $message = empty( $error_message ) ? '邮箱格式不正确' : $error_message;
+            $this->setErrorMessage( $message );
             return false;
         }
         return $this->field;
@@ -239,13 +240,14 @@ class Filter
      * $username = Input::get('email')->required('用户名不能为空')->username();
      * @return type
      */
-    public function username()
+    public function username( string $error_message = '' )
     {
         if ( $this->requiredField !== true ) {
             return $this->requiredField;
         }
         if ( !preg_match( '/^[a-zA-Z0-9_-]{4,20}$/', $this->field ) ) {
-            $this->setErrorMessage( '用户名格式：4到20位（字母，数字，下划线，减号）' );
+            $message = empty( $error_message ) ? '用户名格式：4到20位（字母，数字，下划线，减号）' : $error_message;
+            $this->setErrorMessage( $message );
             return false;
         }
         return $this->field;
@@ -256,7 +258,7 @@ class Filter
      * $username = Input::get('email')->required('用户名不能为空')->username();
      * @return type
      */
-    public function nickname()
+    public function nickname( string $error_message = '' )
     {
         if ( $this->requiredField !== true ) {
             return $this->requiredField;
@@ -264,16 +266,20 @@ class Filter
         $username_len = mb_strwidth( $this->field, 'UTF8' );
         //验证用户所填写的信息是否正确
         if ( $username_len < 4 ) {
-            $this->setErrorMessage( '请输入4个字母或2个汉字以上的昵称' );
+            $message = empty( $error_message ) ? '请输入4个字母或2个汉字以上的昵称' : $error_message;
+            $this->setErrorMessage( $message );
             return false;
         } elseif ( $username_len > 20 ) {
-            $this->setErrorMessage( '昵称不能超过20个字母或10个汉字' );
+            $message = empty( $error_message ) ? '昵称不能超过20个字母或10个汉字' : $error_message;
+            $this->setErrorMessage( $message );
             return false;
         } elseif ( !preg_match( '/^[\x{4e00}-\x{9fa5}\w-]+$/u', $this->field ) ) {
-            $this->setErrorMessage( '昵称只能使用字母数字下划线' );
+            $message = empty( $error_message ) ? '昵称只能使用字母数字下划线' : $error_message;
+            $this->setErrorMessage( $message );
             return false;
         } elseif ( preg_match( '/^1([3]|[5]|[8])[0-9]{9}$/', $this->field ) ) {
-            $this->setErrorMessage( '昵称请使用非手机号码的格式' );
+            $message = empty( $error_message ) ? '昵称请使用非手机号码的格式' : $error_message;
+            $this->setErrorMessage( $message );
             return false;
         }
         return $this->field;
@@ -285,7 +291,7 @@ class Filter
      * @param type $password
      * @return type
      */
-    public function password( bool $usePdo = true )
+    public function password( bool $usePdo = true, string $error_message = '' )
     {
         if ( $this->requiredField !== true ) {
             return $this->requiredField;
@@ -294,16 +300,20 @@ class Filter
         $usePdo === false && $this->sqlInjectionFilter();
         //验证密码是否为空
         if ( empty( $this->field ) ) {
-            $this->setErrorMessage( '密码不能为空' );
+            $message = empty( $error_message ) ? '密码不能为空' : $error_message;
+            $this->setErrorMessage( $message );
             return false;
         } elseif ( preg_match( '/\s/', $this->field ) ) {
-            $this->setErrorMessage( '密码请勿使用空格' );
+            $message = empty( $error_message ) ? '密码请勿使用空格' : $error_message;
+            $this->setErrorMessage( $message );
             return false;
         } elseif ( $password_len < 6 ) {
-            $this->setErrorMessage( '密码太短了，最少6位。' );
+            $message = empty( $error_message ) ? '密码太短了，最少6位。' : $error_message;
+            $this->setErrorMessage( $message );
             return false;
         } elseif ( $password_len > 20 ) {
-            $this->setErrorMessage( '密码太长了，最多20位。' );
+            $message = empty( $error_message ) ? '密码太长了，最多20位。' : $error_message;
+            $this->setErrorMessage( $message );
             return false;
         }
         return $this->field;
@@ -314,13 +324,14 @@ class Filter
      * $tel = Input::get('tel')->required('请输入手机号码')->tel();
      * @return type
      */
-    public function tel()
+    public function tel( string $error_message = '')
     {
         if ( $this->requiredField !== true ) {
             return $this->requiredField;
         }
         if ( !preg_match( '/^1([3]|[5]|[8]|[4]|[7]|[6]|[9])[0-9]{9}$/', $this->field ) ) {
-            $this->setErrorMessage( '手机格式不正确' );
+            $message = empty( $error_message ) ? '手机格式不正确' : $error_message;
+            $this->setErrorMessage( $message );
             return false;
         }
         return $this->field;
@@ -330,13 +341,14 @@ class Filter
      * 时间格式的验证
      * @return type
      */
-    public function date()
+    public function date(string $error_message = '')
     {
         if ( $this->requiredField !== true ) {
             return $this->requiredField;
         }
         if ( !preg_match( "#\d{4}(-)?\d{1,2}(-)?\d{1,2}#", $this->field ) ) {
-            $this->setErrorMessage( '日期格式不正确' );
+            $message = empty( $error_message ) ? '日期格式不正确' : $error_message;
+            $this->setErrorMessage( $message );
             return false;
         }
         return $this->field;
@@ -348,13 +360,14 @@ class Filter
      * @param type $pinyin
      * @return type
      */
-    public function pinyin()
+    public function pinyin(string $error_message = '')
     {
         if ( $this->requiredField !== true ) {
             return $this->requiredField;
         }
         if ( !preg_match( '/^([\w+]{1,250})$/', $this->field ) ) {
-            $this->setErrorMessage( '参数格式不正确' );
+            $message = empty( $error_message ) ? '参数格式不正确' : $error_message;
+            $this->setErrorMessage( $message );
             return false;
         }
         return $this->field;
@@ -364,13 +377,14 @@ class Filter
      * IP地址格式验证
      * @return boolean
      */
-    public function ip()
+    public function ip(string $error_message = '')
     {
         if ( $this->requiredField !== true ) {
             return $this->requiredField;
         }
         if ( filter_var( $this->field, FILTER_VALIDATE_IP ) === false ) {
-            $this->setErrorMessage( 'IP地址格式不正确' );
+            $message = empty( $error_message ) ? 'IP地址格式不正确' : $error_message;
+            $this->setErrorMessage( $message );
             return false;
         }
         return $this->field;
@@ -380,13 +394,14 @@ class Filter
      * URL格式验证
      * @return boolean
      */
-    public function url()
+    public function url(string $error_message = '')
     {
         if ( $this->requiredField !== true ) {
             return $this->requiredField;
         }
         if ( filter_var( $this->field, FILTER_VALIDATE_URL ) === false ) {
-            $this->setErrorMessage( 'URL格式不正确' );
+            $message = empty( $error_message ) ? 'URL格式不正确' : $error_message;
+            $this->setErrorMessage( $message );
             return false;
         }
         return $this->field;
@@ -432,13 +447,14 @@ class Filter
      * 过滤sid
      * @return type
      */
-    public function sid()
+    public function sid(string $error_message = '')
     {
         if ( $this->requiredField !== true ) {
             return $this->requiredField;
         }
         if ( !preg_match( '/^([\d+]{6})$/', $this->field ) ) {
-            $this->setErrorMessage( '商圈格式不正确' );
+            $message = empty( $error_message ) ? '商圈格式不正确' : $error_message;
+            $this->setErrorMessage( $message );
             return false;
         }
         return $this->field;
@@ -448,13 +464,14 @@ class Filter
      * 手机验证码格式
      * @return type
      */
-    public function smsCode()
+    public function smsCode(string $error_message = '')
     {
         if ( $this->requiredField !== true ) {
             return $this->requiredField;
         }
         if ( !preg_match( '/^[0-9]{6}/', $this->field ) ) {
-            $this->setErrorMessage( '验证码格式不正确' );
+            $message = empty( $error_message ) ? '商圈格式不正确' : $error_message;
+            $this->setErrorMessage( $message );
             return false;
         }
         return $this->field;
@@ -464,13 +481,14 @@ class Filter
      * 取1,2,3,4,5 int被字符串分割
      * @return type
      */
-    public function intString()
+    public function intString(string $error_message = '')
     {
         if ( $this->requiredField !== true ) {
             return $this->requiredField;
         }
         if ( !preg_match( '/^([\d]+,)*?([\d]+)$/', $this->field ) ) {
-            $this->setErrorMessage( '参数格式不正确' );
+            $message = empty( $error_message ) ? '参数格式不正确' : $error_message;
+            $this->setErrorMessage( $message );
             return false;
         }
         return $this->field;
@@ -480,13 +498,14 @@ class Filter
      * 取1,2,3,-4,5 int被字符串分割
      * @return type
      */
-    public function intNegativeString()
+    public function intNegativeString(string $error_message = '')
     {
         if ( $this->requiredField !== true ) {
             return $this->requiredField;
         }
         if ( !preg_match( '/^(-?[\d]+,)*?(-?[\d]+)$/', $this->field ) ) {
-            $this->setErrorMessage( '参数格式不正确' );
+            $message = empty( $error_message ) ? '参数格式不正确' : $error_message;
+            $this->setErrorMessage( $message );
             return false;
         }
         return $this->field;
@@ -496,13 +515,14 @@ class Filter
      * 取图片尺寸格式
      * @return type
      */
-    public function imageSize()
+    public function imageSize(string $error_message = '')
     {
         if ( $this->requiredField !== true ) {
             return $this->requiredField;
         }
         if ( !preg_match( '/^(\d+|\d+x\d+)$/', $this->field ) ) {
-            $this->setErrorMessage( '图片尺寸格式不正确' );
+            $message = empty( $error_message ) ? '参数格式不正确' : $error_message;
+            $this->setErrorMessage( $message );
             return false;
         }
         return $this->field;
@@ -512,13 +532,14 @@ class Filter
      * 取图片ID格式
      * @return type
      */
-    public function imageId()
+    public function imageId(string $error_message = '')
     {
         if ( $this->requiredField !== true ) {
             return $this->requiredField;
         }
         if ( !preg_match( '/^([a-z0-9]{2}\/[a-z0-9]{2}\/[a-z0-9]{12})$/', $this->field ) ) {
-            $this->setErrorMessage( '图片ID参数格式不正确' );
+            $message = empty( $error_message ) ? '图片ID参数格式不正确' : $error_message;
+            $this->setErrorMessage( $message );
             return false;
         }
         return $this->field;
@@ -559,7 +580,7 @@ class Filter
      * 返回数组格式
      * @return array|bool
      */
-    public function getArray( $error_message = '' )
+    public function getArray( string $error_message = '' )
     {
         if ( $this->requiredField !== true ) {
             return $this->requiredField;

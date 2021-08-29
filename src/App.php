@@ -111,14 +111,14 @@ class App
     protected function load(): void
     {
         if ( is_file( $this->config_path . 'provider.php' ) ) {
-            $this->container->setShared( include $this->config_path . 'provider.php' );
+            $this->getDI()->setShared( include $this->config_path . 'provider.php' );
         }
         $config_array = [
             'web_template_path' => $this->web_template_path,
             'var_path' => $this->var_path,
             'now_time' => $this->begin_time
         ];
-        $this->container->config->set( $config_array);
+        $this->getDI()->config->set( $config_array);
     }
 
     /**
@@ -128,7 +128,7 @@ class App
     {
         $this->load();
         $this->initialize();
-        $this->container->route->init();
+        $this->getDI()->route->init();
     }
 
     /**
@@ -137,10 +137,10 @@ class App
     protected function initialize()
     {
         //设置时区
-        date_default_timezone_set( $this->container->config[ 'app.default_timezone' ] );
+        date_default_timezone_set( $this->getDI()->config[ 'app.default_timezone' ] );
         //生成htaccess文件
         $htaccess = $this->web_root_path . '.htaccess';
-        if ( $this->container->config[ 'app.url_rewrite' ] ) {
+        if ( $this->getDI()->config[ 'app.url_rewrite' ] ) {
             if ( is_file( $htaccess ) ) {
                 if ( filesize( $htaccess ) > 132 ) {
                     //如果程序无法删除就需要手动删除
@@ -152,18 +152,18 @@ class App
         //不进行魔术过滤 php5.3废除了 set_magic_quotes_runtime(0);
         ini_set( "magic_quotes_runtime", 0 );
         //开启页面压缩
-        if ( $this->container->config[ 'app.gzip' ] ) {
+        if ( $this->getDI()->config[ 'app.gzip' ] ) {
             function_exists( 'ob_gzhandler' ) ? ob_start( 'ob_gzhandler' ) : ob_start();
         } else {
             ob_start();
         }
         //页面报错
-        $this->container->config[ 'app.error_report' ] ? error_reporting( E_ALL ) : error_reporting( 0 );
+        $this->getDI()->config[ 'app.error_report' ] ? error_reporting( E_ALL ) : error_reporting( 0 );
         //控制异常
         set_exception_handler( array( $this, 'tmacException' ) );
         //是否自动开启Session 您可以在控制器中初始化，也可以在系统中自动加载
-        if ( $this->container->config[ 'app.session.start' ] ) {
-            $this->container->session->start();
+        if ( $this->getDI()->config[ 'app.session.start' ] ) {
+            $this->getDI()->session->start();
         }
     }
 

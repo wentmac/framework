@@ -11,18 +11,6 @@ namespace Tmac;
 trait DITrait
 {
 
-    /* @var $container Container */
-    protected $container;
-
-    /**
-     * @param Container $container
-     */
-    public function setDI( Container $container )
-    {
-        $this->container = $container;
-    }
-
-
     /**
      * 直接在调用的method中使用$this->getDI()方法来取得Service实例，方便资源的更高效的使用。只在用的时候调用需要的Service，减少不必要的加载
      * 比如
@@ -38,7 +26,7 @@ trait DITrait
      */
     public function getDI()
     {
-        return $this->container;
+        return ApplicationContext::getContainer();
     }
 
 }

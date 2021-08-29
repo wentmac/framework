@@ -20,15 +20,4 @@ class EntityRepositoryDatabase extends QueryBuilderDatabase
 
     }
 
-    /**
-     * getRepository.
-     *
-     *
-     * @return
-     */
-    public function getRepository( $obj )
-    {
-        return $this->container->getShared( $obj );
-    }
-
 }

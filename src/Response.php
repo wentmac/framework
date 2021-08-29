@@ -238,7 +238,7 @@ class Response
         if ( $tmac_template_update_cache ) {
             $options[ 'auto_update' ] = true;//当模板文件有改动时重新生成缓存（适用于关闭主动更新时用于手动更新模板缓存）
         }
-        $tpl = $this->container->template;
+        $tpl = $this->getDI()->template;
         $tpl->setOptions( $options ); //设置模板参数
         //如果是前台的模板就不用前缀（模板目录名）
         if ( empty( $view ) ) {

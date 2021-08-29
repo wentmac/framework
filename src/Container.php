@@ -25,13 +25,6 @@ use Tmac\Exception\TmacException;
 class Container implements ArrayAccess, ContainerInterface
 {
     /**
-     * The current globally available container (if any).
-     *
-     * @var static
-     */
-    protected static $instance;
-
-    /**
      * 容器绑定标识
      * @var array 可实例化对象定义索引
      */
@@ -49,20 +42,6 @@ class Container implements ArrayAccess, ContainerInterface
      * @var array
      */
     private $_instances = [];
-
-    /**
-     * Get the globally available instance of the container.
-     * 用单例模式获取容器的实例
-     * @return static
-     */
-    public static function getInstance()
-    {
-        if ( is_null( static::$instance ) ) {
-            static::$instance = new static;
-        }
-
-        return static::$instance;
-    }
 
     /**
      * 绑定一个类实例到容器
@@ -617,9 +596,6 @@ class Container implements ArrayAccess, ContainerInterface
      */
     private function autoInjectingDI( ReflectionClass $reflect, object $object )
     {
-        if ( $reflect->hasMethod( 'setDI' ) ) {
-            $object->setDI( $this );
-        }
         $init_method = '_init';
         if ( $reflect->hasMethod( $init_method ) === false ) {
             return true;

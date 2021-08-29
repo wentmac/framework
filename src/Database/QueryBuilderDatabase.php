@@ -33,7 +33,6 @@ class QueryBuilderDatabase
      */
     protected $conn;
 
-    protected $pk;
     private $primaryKey; //主键字段名
     protected $table;
     protected $schema;//实体类的数据表的schema

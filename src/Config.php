@@ -141,13 +141,12 @@ class Config implements ConfigInterface, ArrayAccess
         }
 
         if ( empty( $this->config[ $config_name ] ) ) {
+            $this->load( $config_name, $config_name );
+            // app 项目中的配置合并覆盖公共的配置
             $app_config_file = $this->app_config_path . $config_name . $this->ext;
-
-            $app_config = [];
             if ( is_file( $app_config_file ) ) {
                 $this->load( $app_config_file, $config_name );
             }
-            $this->load( $config_name, $config_name );
         }
         $config = $this->config;
         if ( $all_config_status ) {

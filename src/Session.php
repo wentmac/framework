@@ -60,7 +60,7 @@ class Session implements ArrayAccess
             ini_set( 'session.cookie_lifetime', $this->config[ 'app.session.cookie_lifetime' ] );
         if ( $this->config[ 'app.session.type' ] == 'DB' ) {
             ini_set( 'session.save_handler', 'user' );  //默认值是 files
-            $handler = $this->container->getShared( SessionDb::class ); //开始session存放mysql里的相关操作
+            $handler = $this->getDI()->getShared( SessionDb::class ); //开始session存放mysql里的相关操作
             $handler->execute();
         } else if ( $this->config[ 'app.session.type' ] == 'memcache' ) {
             ini_set( "session.save_handler", "memcache" );

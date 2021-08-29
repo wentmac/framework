@@ -7,15 +7,17 @@
 
 namespace Tmac\Database;
 
-use Tmac\Container;
 use Tmac\Contract\ConfigInterface;
 use Tmac\Database\Connector\MysqlConnector;
 use Tmac\Debug;
+use Tmac\DITrait;
 use Tmac\Exception\InvalidArgumentException;
 use Tmac\Exception\TmacException;
 
 class DriverDatabase
 {
+
+    use DITrait;
 
     private $app_debug;
     /**
@@ -39,10 +41,10 @@ class DriverDatabase
     }
 
 
-    public function __construct( Container $container, $config, $app_debug = false )
+    public function __construct( $config, $app_debug = false )
     {
         $this->config = $config;
-        $this->debug = $container->get( 'debug' );
+        $this->debug = $this->getDI()->get( 'debug' );
         $this->app_debug = $app_debug;
 
         $this->instance = $this->createConnector();

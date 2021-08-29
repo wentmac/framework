@@ -9,6 +9,7 @@
 namespace Tmac;
 
 use ArrayAccess;
+use Tmac\Contract\ConfigInterface;
 
 /**
  * 多语言
@@ -20,36 +21,76 @@ class Translator implements ArrayAccess
      * 配置参数
      * @var array
      */
-    protected $config = [];
+    protected $config = [
+        //默认i18的语言环境：中文
+        'locale' => 'zh-cn',
+        // 回退语言，当默认语言的语言文本没有提供时，就会使用回退语言的对应语言文本
+        'fallback_locale' => 'en',
+        'common_path' => '',
+        'app_path' => '',
+        'ext' => '.php'
+    ];
+
+    /**
+     * 多语言令牌
+     * @var array
+     */
+    protected $lang = [];
+
+    /**
+     * 当前语言
+     * @var string
+     */
+    protected $locale = '';
 
     /**
      * 全局配置文件目录
      * @var string
      */
-    protected $common_config_path;
-
+    protected $language_path = '';
     /**
-     * 全局配置文件目录
+     * App应用配置文件目录
      * @var string
      */
-    protected $app_config_path;
+    protected $app_language_path = '';
 
     /**
      * 配置文件后缀
      * @var string
      */
-    protected $ext;
+    protected $ext = '';
+
+    /**
+     * @return string
+     */
+    public function getLocale()
+    {
+        return $this->locale;
+    }
+
+    /**
+     * 设置当前语言
+     * @param $locale
+     * @return $this
+     */
+    public function setLocale( $locale ): self
+    {
+        $this->locale = $locale;
+        return $this;
+    }
 
     /**
      * 构造方法
      * @access public
      */
-    public function __construct( string $root_path = null, string $app_name = null, string $ext = '.php' )
+    public function __construct( ConfigInterface $config )
     {
-        $root_path = $root_path ? : '';
-        $this->common_config_path = $root_path . DIRECTORY_SEPARATOR . 'config' . DIRECTORY_SEPARATOR;
-        $this->app_config_path = $root_path . DIRECTORY_SEPARATOR . 'src' . DIRECTORY_SEPARATOR . 'App' . DIRECTORY_SEPARATOR . $app_name . DIRECTORY_SEPARATOR . 'Config' . DIRECTORY_SEPARATOR;
-        $this->ext = $ext;
+        $this->config = array_merge( $this->config, array_change_key_case( $config[ 'translation' ] ) );
+
+        $this->language_path = $this->config[ 'common_path' ];
+        $this->app_language_path = $this->config[ 'app_path' ];
+        $this->ext = $this->config[ 'ext' ];
+        $this->locale = $this->config[ 'locale' ];
     }
 
     /**
@@ -59,15 +100,16 @@ class Translator implements ArrayAccess
      * @param string $name 一级配置名
      * @return array
      */
-    public function load( string $file = '', string $name = '' ): array
+    private function load( string $file = '', string $name = '', string $locate = '' ): array
     {
+        $locate = $locate ? : $this->locale;
         if ( is_file( $file ) ) {
             $filename = $file;
-        } elseif ( is_file( $this->common_config_path . $file . $this->ext ) ) {
-            $filename = $this->common_config_path . $file . $this->ext;
+        } elseif ( is_file( $this->language_path . $locate . DIRECTORY_SEPARATOR . $file . $this->ext ) ) {
+            $filename = $this->language_path . $locate . DIRECTORY_SEPARATOR . $file . $this->ext;
         }
         if ( isset( $filename ) ) {
-            return $this->parse( $filename, $name );
+            return $this->parse( $filename, $name, $locate );
         }
         return [];
     }
@@ -79,7 +121,7 @@ class Translator implements ArrayAccess
      * @param string $name 一级配置名
      * @return array
      */
-    protected function parse( string $file, string $name ): array
+    protected function parse( string $file, string $name, string $locate ): array
     {
         $type = pathinfo( $file, PATHINFO_EXTENSION );
         $config = [];
@@ -100,7 +142,7 @@ class Translator implements ArrayAccess
                 $config = json_decode( file_get_contents( $file ), true );
                 break;
         }
-        return is_array( $config ) ? $this->set( $config, strtolower( $name ) ) : [];
+        return is_array( $config ) ? $this->set( $config, strtolower( $name ), $locate ) : [];
     }
 
     /**
@@ -116,74 +158,115 @@ class Translator implements ArrayAccess
 
 
     /**
-     * 获取配置参数 为空则获取所有配置
+     * 获取语言定义(不区分大小写)
      * @access public
-     * @param string $name 配置参数名（支持多级配置 .号分割）
-     * @param mixed $default 默认值
+     * @param string|null $name 语言变量
+     * @param array $vars 变量替换
+     * @param string $locate 语言作用域
      * @return mixed
      */
-    public function get( string $name = null, $default = null )
+    public function get( string $name = null, array $vars = [], string $locate = '' )
     {
+        $locate = $locate ? : $this->locale;
         if ( empty( $name ) ) {
             return '';
         }
 
         if ( false === strpos( $name, '.' ) ) {
             //如果没有找到.加载一级配置
-            $config_name = $name;
-            $all_config_status = true;
+            $lang_name = $name;
+            $all_lang_status = true;
         } else {
-            $name = explode( '.', $name );
-            $config_name = strtolower( $name[ 0 ] );
-            $all_config_status = false;
+            $name_array = explode( '.', $name );
+            $lang_name = strtolower( $name_array[ 0 ] );
+            $all_lang_status = false;
         }
 
-        if ( empty( $this->config[ $config_name ] ) ) {
-            $app_config_file = $this->app_config_path . $config_name . $this->ext;
-
-            $app_config = [];
-            if ( is_file( $app_config_file ) ) {
-                $this->load( $app_config_file, $config_name );
+        if ( empty( $this->lang[ $locate ][ $lang_name ] ) ) {
+            $this->load( $lang_name, $lang_name, $locate );
+            // app 项目中的配置合并覆盖公共的配置
+            $app_language_file = $this->app_language_path . $locate . DIRECTORY_SEPARATOR . $lang_name . $this->ext;
+            if ( is_file( $app_language_file ) ) {
+                $this->load( $app_language_file, $lang_name, $locate );
             }
-            $this->load( $config_name, $config_name );
         }
-        $config = $this->config;
-        if ( $all_config_status ) {
-            if ( isset( $this->config[ $config_name ] ) ) {
-                return $this->config[ $config_name ];
+
+        $lang = $this->lang[ $locate ] ?? [];
+        if ( $all_lang_status ) {
+            if ( isset( $lang[ $lang_name ] ) ) {
+                return $this->parseParams( $name, $lang[ $lang_name ], $vars );
             }
-            return $config;
+            return $this->parseParams( $name, $lang, $vars );
         }
         // 按.拆分成多维数组进行判断
-        foreach ( $name as $val ) {
-            if ( isset( $config[ $val ] ) ) {
-                $config = $config[ $val ];
+        foreach ( $name_array as $val ) {
+            if ( isset( $lang[ $val ] ) ) {
+                $lang = $lang[ $val ];
             } else {
-                return $default;
+                return $name;
             }
         }
-        return $config;
+        return $this->parseParams( $name, $lang, $vars );
+    }
+
+    // 变量解析
+    private function parseParams( $name, $value, array $vars = [] )
+    {
+        // 如果是数组，说明未达到数组最后一层，返回默认
+        if ( is_array( $value ) ) {
+            return $name;
+        }
+        if ( !empty( $vars ) && is_array( $vars ) ) {
+            /**
+             * Notes:
+             * 为了检测的方便，数字索引的判断仅仅是参数数组的第一个元素的key为数字0
+             * 数字索引采用的是系统的 sprintf 函数替换，用法请参考 sprintf 函数
+             */
+            if ( key( $vars ) === 0 ) {
+                // 数字索引解析
+                /*
+                 'file_format'    =>    '文件格式: %s,文件大小：%d',
+                 {:lang('file_format',['jpeg,png,gif,jpg','2MB'])}
+                */
+                array_unshift( $vars, $value );
+                $value = call_user_func_array( 'sprintf', $vars );
+            } else {
+                // 关联索引解析
+                /*
+                 'file_format'    =>    '文件格式: {:format},文件大小：{:size}',
+                {:lang('file_format',['format' => 'jpeg,png,gif,jpg','size' => '2MB'])}
+                 */
+                $replace = array_keys( $vars );
+                foreach ( $replace as &$v ) {
+                    $v = "{:{$v}}";
+                }
+                $value = str_replace( $replace, $vars, $value );
+            }
+        }
+
+        return $value;
     }
 
     /**
      * 设置配置参数 name为数组则为批量设置
      * @access public
-     * @param array $config 配置参数
+     * @param array $lang 配置参数
      * @param string $name 配置名
      * @return array
      */
-    public function set( array $config, string $name = null ): array
+    public function set( array $lang, string $name = null, string $locate = '' ): array
     {
+        $locate = $locate ? : $this->locale;
         if ( !empty( $name ) ) {
-            if ( isset( $this->config[ $name ] ) ) {
-                $result = array_merge( $this->config[ $name ], $config );
+            if ( isset( $this->lang[ $locate ][ $name ] ) ) {
+                $result = array_merge( $this->lang[ $locate ][ $name ], $lang );
             } else {
-                $result = $config;
+                $result = $lang;
             }
 
-            $this->config[ $name ] = $result;
+            $this->lang[ $locate ][ $name ] = $result;
         } else {
-            $result = $this->config = array_merge( $this->config, array_change_key_case( $config ) );
+            $result = $this->lang[ $locate ] = array_merge( $this->lang[ $locate ], array_change_key_case( $lang ) );
         }
 
         return $result;

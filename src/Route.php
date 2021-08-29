@@ -152,7 +152,7 @@ class Route
     {
         $class_name = ucfirst( APP_NAME ) . '\Controller\\' . $this->param[ 'TMAC_CONTROLLER_FILE' ] . $this->param[ 'TMAC_CONTROLLER' ];
         try {
-            $controller_object = $this->container->get( $class_name );
+            $controller_object = $this->getDI()->get( $class_name );
         } catch ( ClassNotFoundException $e ) {
             $message = "错误的请求，找不到Controller文件";
             if ( $this->config[ 'app.debug' ] ) {
@@ -181,7 +181,7 @@ class Route
         if ( $method->isPublic() === FALSE ) {
             return true;
         }
-        $args = $this->container->bindParams( $method );
+        $args = $this->getDI()->bindParams( $method );
         $method->invokeArgs( $controller_object, $args );
         //$method->invoke( $controller_object );
     }
@@ -204,7 +204,7 @@ class Route
             throw new TmacException( $message );
         }
         $method = $reflector->getMethod( $controller_method );
-        $args = $this->container->bindParams( $method );
+        $args = $this->getDI()->bindParams( $method );
 
         if ( $method->isPublic() === FALSE ) {
             $message = "Action为私有方法";
