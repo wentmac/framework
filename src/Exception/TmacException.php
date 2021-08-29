@@ -41,8 +41,9 @@ class TmacException extends Exception
      */
     public function getError()
     {
-        $index_url = env( 'app.host', $_SERVER[ 'SERVER_NAME' ] );
-        $url = $index_url . $_SERVER[ 'REQUEST_URI' ];
+        $index_url = env( 'app.host', $_SERVER[ 'SERVER_NAME' ] ?? '' );
+        $url = $index_url;
+        $url .= $_SERVER[ 'REQUEST_URI' ] ?? '';
         if ( env( 'app_debug' ) ) {
             $trace = $this->getTrace();
             $this->class = $trace[ 0 ][ 'class' ];

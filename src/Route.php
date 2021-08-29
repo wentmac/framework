@@ -57,9 +57,11 @@ class Route
     private function parsePath(): void
     {
         if ( $this->config[ 'app.url_case_insensitive' ] ) {
-            // URL地址中M不区分大小写
-            if ( !empty( $_GET[ 'M' ] ) && empty( $_GET[ 'm' ] ) )
-                $_GET[ 'm' ] = strtolower( $_GET[ 'M' ] );
+            // URL地址中不区分大小写
+            if ( !empty( $_GET[ 'M' ] ) && empty( $_GET[ 'm' ] ) ) {
+                $_GET[ 'm' ] = $_GET[ 'M' ];
+            }
+            $_GET[ 'm' ] = strtolower( $_GET[ 'm' ] );
         }
         //确定Controller以及Action
         if ( empty( $_GET[ 'm' ] ) ) {
@@ -105,11 +107,18 @@ class Route
             to
              system/permission/save (permissionSaveAction)
              */
-            if ( ( $transform = strrpos( $action, $this->config[ 'app.url_action_separator' ] ) ) > 0 ) {//如果query_string中有url separator就来取controller和method
-                // 只前只考虑一个分隔符的情况（性能考虑及使用场景上不会有太多的分隔符同时使用）
-                $action_separator_start = substr( $action, 0, $transform );
-                $action_separator_end = ucwords(substr( $action, $transform + 1 ));
-                $action = $action_separator_start.$action_separator_end;
+            if ( false !== strpos( $action, $this->config[ 'app.url_action_separator' ] ) ) {
+                // 如果query_string中有url separator就来取controller和method
+                $action_params_array = explode( $this->config[ 'app.url_action_separator' ], $action );
+                $action_temp = '';
+                foreach ( $action_params_array as $k => $action_param ) {
+                    if ( $k === 0 ) {
+                        $action_temp .= $action_param;
+                    } else {
+                        $action_temp .= ucwords( $action_param );
+                    }
+                }
+                $action = $action_temp;
             }
         }
 
