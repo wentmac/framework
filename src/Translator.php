@@ -14,6 +14,12 @@ use Tmac\Contract\ConfigInterface;
 /**
  * 多语言
  * i18n
+ *
+ * $a = $this->translator->get( 'validation.accepted', [ 'attribute' => 'fuck' ] );
+ * $b = $this->translator->get( 'validation.active_url', [ 'attribute' => '法克' ] );
+ * $c = $this->translator->get( 'validation.ach', [ '小牛电动' ] );
+ * $d = $this->translator->get( 'validation.between.file' );
+ * $e = trans( 'validation.ach', [ '小牛电动' ] );
  */
 class Translator implements ArrayAccess
 {
