@@ -337,6 +337,18 @@ class Response
     }
 
     /**
+     * 页面header location 302跳转
+     * @param $url
+     * @return bool
+     * @throws TmacException
+     */
+    public function redirect( $url )
+    {
+        $this->setHeader( 'Location', $url );
+        return $this->send();
+    }
+
+    /**
      * xml 结构 return
      * @param $xml
      * @return bool
