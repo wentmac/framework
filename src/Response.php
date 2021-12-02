@@ -324,6 +324,31 @@ class Response
     }
 
     /**
+     * 返回值原始json数据结构
+     * @param array $data
+     * @return bool
+     * @throws TmacException
+     */
+    public function json( $data = [] )
+    {
+        $this->setHeader( 'Content-type', 'application/json; charset=utf-8' );
+        $this->setContent( json_encode( $data, JSON_UNESCAPED_UNICODE ) );
+        return $this->send();
+    }
+
+    /**
+     * 页面header location 302跳转
+     * @param $url
+     * @return bool
+     * @throws TmacException
+     */
+    public function redirect( $url )
+    {
+        $this->setHeader( 'Location', $url );
+        return $this->send();
+    }
+
+    /**
      * xml 结构 return
      * @param $xml
      * @return bool
