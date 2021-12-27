@@ -324,7 +324,7 @@ class Filter
      * $tel = Input::get('tel')->required('请输入手机号码')->tel();
      * @return type
      */
-    public function tel( string $error_message = '')
+    public function tel( string $error_message = '' )
     {
         if ( $this->requiredField !== true ) {
             return $this->requiredField;
@@ -341,12 +341,30 @@ class Filter
      * 时间格式的验证
      * @return type
      */
-    public function date(string $error_message = '')
+    public function date( string $error_message = '' )
     {
         if ( $this->requiredField !== true ) {
             return $this->requiredField;
         }
-        if ( !preg_match( "#\d{4}(-)?\d{1,2}(-)?\d{1,2}#", $this->field ) ) {
+        if ( !preg_match( "/^\d{4}(-)?\d{2}(-)?\d{2}$/", $this->field ) ) {
+            $message = empty( $error_message ) ? '日期格式不正确' : $error_message;
+            $this->setErrorMessage( $message );
+            return false;
+        }
+        return $this->field;
+        //return zhuna_input_Transverter('date', $this->field);
+    }
+
+    /**
+     * 时间格式的验证
+     * @return type
+     */
+    public function datetime( string $error_message = '' )
+    {
+        if ( $this->requiredField !== true ) {
+            return $this->requiredField;
+        }
+        if ( !preg_match( "/^\d{4}(-)\d{2}(-)\d{2}\s+\d{2}:\d{2}:\d{2}$/", $this->field ) ) {
             $message = empty( $error_message ) ? '日期格式不正确' : $error_message;
             $this->setErrorMessage( $message );
             return false;
@@ -360,7 +378,7 @@ class Filter
      * @param type $pinyin
      * @return type
      */
-    public function pinyin(string $error_message = '')
+    public function pinyin( string $error_message = '' )
     {
         if ( $this->requiredField !== true ) {
             return $this->requiredField;
@@ -377,7 +395,7 @@ class Filter
      * IP地址格式验证
      * @return boolean
      */
-    public function ip(string $error_message = '')
+    public function ip( string $error_message = '' )
     {
         if ( $this->requiredField !== true ) {
             return $this->requiredField;
@@ -394,7 +412,7 @@ class Filter
      * URL格式验证
      * @return boolean
      */
-    public function url(string $error_message = '')
+    public function url( string $error_message = '' )
     {
         if ( $this->requiredField !== true ) {
             return $this->requiredField;
@@ -447,7 +465,7 @@ class Filter
      * 过滤sid
      * @return type
      */
-    public function sid(string $error_message = '')
+    public function sid( string $error_message = '' )
     {
         if ( $this->requiredField !== true ) {
             return $this->requiredField;
@@ -464,7 +482,7 @@ class Filter
      * 手机验证码格式
      * @return type
      */
-    public function smsCode(string $error_message = '')
+    public function smsCode( string $error_message = '' )
     {
         if ( $this->requiredField !== true ) {
             return $this->requiredField;
@@ -481,7 +499,7 @@ class Filter
      * 取1,2,3,4,5 int被字符串分割
      * @return type
      */
-    public function intString(string $error_message = '')
+    public function intString( string $error_message = '' )
     {
         if ( $this->requiredField !== true ) {
             return $this->requiredField;
@@ -498,7 +516,7 @@ class Filter
      * 取1,2,3,-4,5 int被字符串分割
      * @return type
      */
-    public function intNegativeString(string $error_message = '')
+    public function intNegativeString( string $error_message = '' )
     {
         if ( $this->requiredField !== true ) {
             return $this->requiredField;
@@ -515,7 +533,7 @@ class Filter
      * 取图片尺寸格式
      * @return type
      */
-    public function imageSize(string $error_message = '')
+    public function imageSize( string $error_message = '' )
     {
         if ( $this->requiredField !== true ) {
             return $this->requiredField;
@@ -532,7 +550,7 @@ class Filter
      * 取图片ID格式
      * @return type
      */
-    public function imageId(string $error_message = '')
+    public function imageId( string $error_message = '' )
     {
         if ( $this->requiredField !== true ) {
             return $this->requiredField;
