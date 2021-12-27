@@ -415,7 +415,7 @@ trait Builder
                 return $this->parseWhereFindInSetLogic( $value, $logic );
             }
             //取了别名后的
-            $column = $this->parseKey( $value[ 'column' ] );
+            $column = $this->parseKey( $value[ 'column' ], $value[ 'query_type' ] );
             $where = " {$logic} {$column} {$value['operator']} ";
 
 
@@ -424,7 +424,7 @@ trait Builder
                 $where .= $value[ 'value' ]->getValue();
             } else {
                 //进行数据bindValue
-                $where .= $this->parseBuilderDataBind( $value[ 'column' ], $value[ 'value' ] );
+                $where .= $this->parseBuilderDataBind( $value[ 'column' ], $value[ 'value' ], $value[ 'query_type' ] );
             }
 
         }
@@ -530,10 +530,17 @@ trait Builder
     /**
      * 解析正确的key名。主要是为了alias
      * @param $key
+     * @param string $query_type 查询类型 比如json
      * @return string
      */
-    private function parseKey( $key )
+    private function parseKey( $key, $query_type = '' )
     {
+        $key = trim( $key );
+        if ( $query_type === 'json' ) {
+            // JSON字段支持
+            [ $field, $name ] = explode( '->', $key, 2 );
+            return 'json_extract(' . $field . ', \'$' . ( strpos( $name, '[' ) === 0 ? '' : '.' ) . str_replace( '->', '.', $name ) . '\')';
+        }
         //不需要取别名
         return $key;
         //判断别名
@@ -550,18 +557,20 @@ trait Builder
     /**
      * 数据绑定处理
      * @access protected
-     * @param Query $query 查询对象
      * @param string $key 字段名
-     * @param mixed $data 数据
-     * @param array $bind 绑定数据
+     * @param mixed $value 数据
+     * @param string $query_type 查询类型 比如json
      * @return string
      */
-    private function parseBuilderDataBind( string $key, $value ): string
+    private function parseBuilderDataBind( string $key, $value, $query_type = '' ): string
     {
         if ( $value instanceof Raw ) {
             return $value->getValue();
         }
-
+        if ( $query_type === 'json' ) {
+            // JSON字段支持
+            $key = str_replace( '->', '_', $key );
+        }
         //$join_option = $this->getOptions('join');
         $schema = $this->schema;
         $schema_key = $key;

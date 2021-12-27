@@ -63,10 +63,16 @@ trait Where
         if ( !empty( $operator ) ) {
             $operator = strtoupper( $operator );
         }
+        $query_type = '';
+        // 判断是否是json查询
+        if ( strpos( $column, '->' ) !== false ) {
+            // JSON字段支持
+            $query_type = 'json';
+        }
 
         $type = 'basic';
         $this->options[ 'where' ][] = compact(
-            'type', 'column', 'operator', 'value', 'boolean'
+            'type', 'column', 'operator', 'value', 'boolean', 'query_type'
         );
 
         return $this;
