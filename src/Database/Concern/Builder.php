@@ -535,7 +535,6 @@ trait Builder
      */
     private function parseKey( $key, $query_type = '' )
     {
-        $key = trim( $key );
         if ( $query_type === 'json' ) {
             // JSON字段支持
             [ $field, $name ] = explode( '->', $key, 2 );
