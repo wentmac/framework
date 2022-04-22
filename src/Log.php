@@ -98,13 +98,58 @@ class Log
 
     /**
      * 设置level级别
-     * @param type $level
+     * @param string $level
      * @return $this;
      */
-    public function level( $level )
+    public function level( string $level )
     {
         $this->level = strtoupper( $level );
         return $this;
+    }
+
+    /**
+     * @param $message
+     * @return bool
+     */
+    public function info( $message )
+    {
+        return $this->level( 'INFO' )->write( $message );
+    }
+
+    /**
+     * @param $message
+     * @return bool
+     */
+    public function debug( $message )
+    {
+        return $this->level( 'DEBUG' )->write( $message );
+    }
+
+    /**
+     * @param $message
+     * @return bool
+     */
+    public function warn( $message )
+    {
+        return $this->level( 'WARN' )->write( $message );
+    }
+
+    /**
+     * @param $message
+     * @return bool
+     */
+    public function error( $message )
+    {
+        return $this->level( 'ERROR' )->write( $message );
+    }
+
+    /**
+     * @param $message
+     * @return bool
+     */
+    public function fatal( $message )
+    {
+        return $this->level( 'FATAL' )->write( $message );
     }
 
     /**
