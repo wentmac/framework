@@ -167,11 +167,11 @@ class Functions
      * curl取文件
      * @param $url
      * @param int $timeout
-     * @param false $ssl
      * @return bool|string
      */
-    public function curl_file_get_contents( string $url, int $timeout = 5, bool $ssl = false )
+    public function curl_file_get_contents( string $url, int $timeout = 5 )
     {
+        $ssl = substr( $url, 0, 8 ) == "https://" ? TRUE : FALSE;
         $ch = curl_init();
         curl_setopt( $ch, CURLOPT_URL, $url );
         curl_setopt( $ch, CURLOPT_TIMEOUT, $timeout );
@@ -192,8 +192,9 @@ class Functions
      * @param type $timeout
      * @return type
      */
-    public function curl_post_contents( $url, $postField, $timeout = 30, $ssl = false )
+    public function curl_post_contents( $url, $postField, $timeout = 30 )
     {
+        $ssl = substr( $url, 0, 8 ) == "https://" ? TRUE : FALSE;
         $ch = curl_init();
         curl_setopt( $ch, CURLOPT_URL, $url );
         curl_setopt( $ch, CURLOPT_POST, 1 );
