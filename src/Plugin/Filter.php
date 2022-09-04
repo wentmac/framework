@@ -642,6 +642,25 @@ class Filter
 
 
     /**
+     * 枚举值验证
+     * @param array $allowArray
+     * @param string $error_message
+     * @return $this
+     */
+    public function enum( array $allowArray, string $error_message = '' )
+    {
+        if ( empty( $this->field ) ) {
+            return $this;
+        }
+        if ( in_array( $this->field, $allowArray ) ) {
+            return $this;
+        }
+        $message = empty( $error_message ) ? "{$this->field}枚举值格式不合法" : $error_message;
+        $this->setErrorMessage( $message );
+        return $this;
+    }
+
+    /**
      * 文件上传尺寸，格式校验
      * @param string $type
      * @param array $validate
