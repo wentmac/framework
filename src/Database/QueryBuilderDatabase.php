@@ -87,11 +87,11 @@ class QueryBuilderDatabase
      * 初始化
      * QueryBuilderDatabase constructor.
      * @param DriverDatabase $connection db driver 数据库驱动
-     * @param $table 数据表名
-     * @param $schema 数据库字段的组织和结构 字段的数据类型
-     * @param $primaryKey 数据表的主键id
+     * @param string $table 数据表名
+     * @param array $schema 数据库字段的组织和结构 字段的数据类型
+     * @param string $primaryKey 数据表的主键id
      */
-    public function __construct( DriverDatabase $connection, $table, $schema, $primaryKey )
+    public function __construct( DriverDatabase $connection, string $table, array $schema, string $primaryKey )
     {
         $this->driverDatabase = $connection;
         $this->conn = $connection->getInstance();

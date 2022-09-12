@@ -23,10 +23,10 @@ abstract class AbstractEntity
      * @param mixed $value 值
      * @return void
      */
-    public function __set( string $name, $value ): void
-    {
-        throw new DbException( 'propertyName:' . $name . ' unset in entity:' . get_called_class() );
-    }
+    // public function __set( string $name, $value ): void
+    // {
+    //     throw new DbException( 'propertyName:' . $name . ' unset in entity:' . get_called_class() );
+    // }
 
     /**
      * 获取器 获取数据对象的值
@@ -34,8 +34,8 @@ abstract class AbstractEntity
      * @param string $name 名称
      * @return mixed
      */
-    public function __get( string $name )
-    {
-        throw new DbException( 'propertyName:' . $name . ' unset in entity:' . get_called_class() );
-    }
+    // public function __get( string $name )
+    // {
+    //     throw new DbException( 'propertyName:' . $name . ' unset in entity:' . get_called_class() );
+    // }
 }

@@ -45,6 +45,10 @@ trait Orm
             if ( isset ( $value ) === false ) {//排除掉对象值为空的
                 continue;
             }
+            if ( !in_array( $key, $this->entityFields ) ) {
+                // 非法字段排除
+                continue;
+            }
             $primaryKeyField = $this->getPrimaryKey();
             if ( !empty ( $primaryKeyField ) && $key === $primaryKeyField ) {//排除掉主键更新时的主键字段的误更新,并且把主键当成唯一更新条件
                 $this->where( $this->getPrimaryKey(), $value );
@@ -90,6 +94,10 @@ trait Orm
         $this->checkEntity( $entity );
         foreach ( $entity as $key => $value ) {
             if ( isset ( $value ) === false ) {//排除掉对象值为空的
+                continue;
+            }
+            if ( !in_array( $key, $this->entityFields ) ) {
+                // 非法字段排除
                 continue;
             }
             $primaryKeyField = $this->getPrimaryKey();
@@ -200,6 +208,10 @@ trait Orm
                 if ( isset ( $value ) === false ) {//排除掉对象值为空的
                     continue;
                 }
+                if ( !in_array( $key, $this->entityFields ) ) {
+                    // 非法字段排除
+                    continue;
+                }
                 $primaryKeyField = $this->getPrimaryKey();
                 if ( !empty ( $primaryKeyField ) && $key === $primaryKeyField ) {//insert时主键不需要插入
                     continue;
@@ -288,7 +300,7 @@ trait Orm
         }
 
         if ( $fetch_obj ) {
-            $res = $this->getConn()->fetchAssocObject( $sql, $binds, $master );
+            $res = $this->getConn()->fetchAssocObject( $sql, $binds, $master, $this->entity );
         } else {
             $res = $this->getConn()->fetchAssoc( $sql, $binds, $master );
         }
@@ -352,7 +364,7 @@ trait Orm
         }
 
         if ( $fetch_obj ) {
-            $res = $this->getConn()->fetchAllObject( $sql, $binds, $master );
+            $res = $this->getConn()->fetchAllObject( $sql, $binds, $master, $this->entity );
         } else {
             $res = $this->getConn()->fetchAll( $sql, $binds, $master );
         }
@@ -385,7 +397,7 @@ trait Orm
             ];
         }
         if ( $fetch_obj ) {
-            $res = $this->getConn()->fetchAssocObject( $sql, $binds, $master );
+            $res = $this->getConn()->fetchAssocObject( $sql, $binds, $master, $this->entity );
         } else {
             $res = $this->getConn()->fetchAssoc( $sql, $binds, $master );
         }
@@ -420,7 +432,7 @@ trait Orm
             ];
         }
         if ( $fetch_obj ) {
-            $res = $this->getConn()->fetchAllObject( $sql, $binds, $master );
+            $res = $this->getConn()->fetchAllObject( $sql, $binds, $master, $this->entity );
         } else {
             $res = $this->getConn()->fetchAll( $sql, $binds, $master );
         }
