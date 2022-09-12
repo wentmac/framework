@@ -25,7 +25,7 @@ class EntityRepositoryDatabase extends QueryBuilderDatabase
      * 所有合法的数据表字段
      * @var array|int[]|string[]
      */
-    protected array $entityFields = [];
+    protected $entityFields = [];
 
     public function __construct( DriverDatabase $connection, string $table_name, array $schema, string $primaryKey, string $entity = '' )
     {
